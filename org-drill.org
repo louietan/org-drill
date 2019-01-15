@@ -461,6 +461,18 @@ Cram sessions are not considered to be part of the normal learning process for
 the tested items. Cramming will not affect when items are next due for
 revision.
 
+* Typing your answers
+
+In some cases, you may find that repeating answers to yourself is not
+enough; repeating answers outload can help, but this may not be
+impossible in some environments. Additionally, where the answers are
+long it can be hard to check for that you really got the answer
+correct.
+
+Under these circumstances, set the variable
+=org-drill-presentation-prompt-with-typing=. Answer attempts can now
+be typed into a buffer, and we will be displayed back to you when the
+answer is given.
 
 * Leeches
 # <<leeches>>

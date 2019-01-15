@@ -543,6 +543,10 @@ exponential effect on inter-repetition spacing."
   :group 'org-drill
   :type 'float)
 
+(defcustom org-drill-presentation-prompt-with-typing nil
+  "Non-nil indicates that answers should be given in a buffer."
+  :group 'org-drill
+  :type 'boolean)
 
 (defvar drill-answer nil
   "Global variable that can be bound to a correct answer when an
@@ -1586,10 +1590,32 @@ the current topic."
                                 "have never reviewed."))
             prompt)))
 
+(cl-defun org-drill-presentation-prompt  (&key prompt
+                                               returns
+                                               (start-time (current-time)))
+  "Create a card prompt with a timer and user-specified menu.
 
-(cl-defun org-drill-presentation-prompt (&key prompt
-                                              returns
-                                              (start-time (current-time)))
+Arguments:
+
+PROMPT: A string that overrides the standard prompt.
+
+RETURNS: An alist of the form ((<char> . <symbol>)...) where
+         <char> is the character pressed and <symbol> is the
+         returned value, which will normally be either a symbol,
+         `t' or `nil'.
+
+START-TIME: The time the card started to be displayed.  This
+            defaults to (current-time), however, if the function
+            is called multiple times from one card then it might
+            be convenient to override this default.
+"
+  (if org-drill-presentation-prompt-with-typing
+    (org-drill-presentation-prompt-in-buffer)
+    (org-drill-presentation-prompt-in-mini-buffer)))
+
+(cl-defun org-drill-presentation-prompt-in-mini-buffer (&key prompt
+                                                          returns
+                                                          (start-time (current-time)))
   "Create a card prompt with a timer and user-specified menu.
 
 Arguments:
@@ -1649,6 +1675,103 @@ Consider reformulating the item to make it easier to remember.\n"
        ((eql ch org-drill--skip-key) 'skip)
        (t t)))))
 
+
+(defvar org-drill-presentation-timer nil
+  "Timer for buffer-entry of answers")
+
+(defun org-drill-presentation-minibuffer-timer-function
+    (item-start-time full-prompt)
+  "Return prompt for mini-buffer in `org-drill-response-mode'."
+  (let ((elapsed (time-subtract (current-time) item-start-time)))
+    (message (concat (if (>= (time-to-seconds elapsed) (* 60 60))
+                         "++:++ "
+                       (format-time-string "%M:%S " elapsed))
+                     full-prompt))))
+
+(define-derived-mode org-drill-response-mode nil "Org-Drill")
+(define-key org-drill-response-mode-map [return] 'org-drill-response-rtn)
+(define-key org-drill-response-mode-map (kbd "C-c q") 'org-drill-response-quit)
+(define-key org-drill-response-mode-map (kbd "C-c e") 'org-drill-response-edit)
+(define-key org-drill-response-mode-map (kbd "C-c s") 'org-drill-response-skip)
+(define-key org-drill-response-mode-map (kbd "C-c t") 'org-drill-response-tags)
+
+(defun org-drill-response-complete ()
+  (kill-buffer (current-buffer))
+  (exit-recursive-edit))
+
+(defun org-drill-response-rtn ()
+  (interactive)
+  (setq drill-typed-answer (buffer-string)
+        exit-kind t)
+  (org-drill-response-complete))
+
+(defun org-drill-response-quit ()
+  (interactive)
+  (setq exit-kind 'quit)
+  (org-drill-response-complete))
+
+(defun org-drill-response-edit ()
+  (interactive)
+  (setq exit-kind 'edit)
+  (org-drill-response-complete))
+
+(defun org-drill-response-skip ()
+  (interactive)
+  (setq exit-kind 'skip)
+  (org-drill-response-complete))
+
+(defun org-drill-response-tags ()
+  (interactive)
+  (setq exit-kind 'tags)
+  (org-drill-response-complete))
+
+(defun org-drill-response-get-buffer-create ()
+  (let ((local-current-input-method
+         current-input-method))
+    (with-current-buffer
+        (get-buffer-create "*Org-Drill*")
+      (erase-buffer)
+      (org-drill-response-mode)
+      (set-input-method local-current-input-method)
+      (current-buffer))))
+
+(defun org-drill-presentation-prompt-in-buffer ()
+  (let* ((item-start-time (current-time))
+         (input nil)
+         (ch nil)
+         (last-second 0)
+         (prompt
+          (format (concat "Type answer then return, "
+                          "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit.")
+                  org-drill--edit-key
+                  org-drill--tags-key
+                  org-drill--skip-key
+                  org-drill--quit-key))
+         (full-prompt
+          (org-drill--make-minibuffer-prompt prompt)))
+    (setq drill-typed-answer nil)
+    (if (and (eql 'warn org-drill-leech-method)
+             (org-drill-entry-leech-p))
+        (setq full-prompt (concat
+                           (propertize "!!! LEECH ITEM !!!
+You seem to be having a lot of trouble memorising this item.
+Consider reformulating the item to make it easier to remember.\n"
+                                       'face '(:foreground "red"))
+                           full-prompt)))
+      (setq org-drill-presentation-timer
+            (run-with-idle-timer 1 t
+                    #'org-drill-presentation-minibuffer-timer-function
+                    item-start-time full-prompt))
+      (let ((exit-kind)
+            (buf
+             (org-drill-response-get-buffer-create)))
+        (save-window-excursion
+          (select-window
+           (display-buffer-below-selected buf nil))
+          (recursive-edit)
+          (cancel-timer org-drill-presentation-timer)
+          (setq org-drill-presentation-timer nil)
+          exit-kind))))
 
 (cl-defun org-drill-presentation-prompt-for-string (prompt)
   "Create a card prompt with a timer and user-specified menu.
