@@ -726,7 +726,7 @@ CMD is bound, or nil if it is not bound to a key."
              (file-no-restriction 'file)
              (directory
               (directory-files (file-name-directory (buffer-file-name))
-                               t "\\.org$"))
+                               t "^[^.].*\\.org$"))
              (t org-drill-scope))
            skip)))
 
