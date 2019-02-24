@@ -3020,6 +3020,12 @@ hours."
   (setq *org-drill-cram-mode* t)
   (org-drill scope drill-match))
 
+(defun org-drill-cram-tree ()
+  "Run  an interactive drill session in 'cram mode' using subtree at point.
+
+See also, `org-drill-cram' and `org-drill-tree'."
+  (interactive)
+  (org-drill-cram 'tree))
 
 (defun org-drill-tree ()
   "Run an interactive drill session using drill items within the
