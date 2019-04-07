@@ -53,6 +53,7 @@
 (require 'org-learn)
 (require 'savehist)
 
+(require 'seq)
 
 (defgroup org-drill nil
   "Options concerning interactive drill sessions in Org mode (org-drill)."
@@ -263,7 +264,6 @@ the hidden cloze during a test.")
 
 (defvar-local org-drill-cloze-keywords
   (org-drill--compute-cloze-keywords))
-
 
 ;; Variables defining what keys can be pressed during drill sessions to quit the
 ;; session, edit the item, etc.
@@ -565,6 +565,7 @@ the user. Used by card types that ask the user to type in an
 answer, rather than just pressing spacebar to reveal the
 answer.")
 
+(defvar org-drill-display-answer-hook nil)
 
 (defcustom org-drill-cloze-length-matches-hidden-text-p
   nil
@@ -574,6 +575,7 @@ to preserve the formatting in a displayed table, for example."
   :group 'org-drill
   :type 'boolean)
 
+(defvar-local org-drill-response-associated-buffer nil)
 
 (defvar *org-drill-session-qualities* nil)
 (defvar *org-drill-start-time* 0)
@@ -721,15 +723,18 @@ CMD is bound, or nil if it is not bound to a key."
                             (not (member '(?+ ?- ?|) (elt org-drill-match 0))))
                        "+" "")
                    (or org-drill-match ""))
-           (case org-drill-scope
-             (file nil)
-             (file-no-restriction 'file)
-             (directory
-              (directory-files (file-name-directory (buffer-file-name))
-                               t "^[^.].*\\.org$"))
-             (t org-drill-scope))
+           (org-drill-current-scope scope)
            skip)))
 
+(defun org-drill-current-scope (scope)
+  (case scope
+    (file nil)
+    (file-no-restriction 'file)
+    (directory
+     (directory-files
+      (file-name-directory (buffer-file-name))
+      t "^[^.].*\\.org$"))
+    (t scope)))
 
 (defmacro with-hidden-cloze-text (&rest body)
   `(progn
@@ -1424,6 +1429,7 @@ of QUALITY."
                                  org-drill--edit-key
                                  7          ; C-g
                                  ?0 ?1 ?2 ?3 ?4 ?5)))
+        (run-hooks 'org-drill-display-answer-hook)
         (setq input (org-drill--read-key-sequence
                      (if (eq ch org-drill--help-key)
                          (format "0-2 Means you have forgotten the item.
@@ -1679,6 +1685,16 @@ Consider reformulating the item to make it easier to remember.\n"
 (defvar org-drill-presentation-timer nil
   "Timer for buffer-entry of answers")
 
+(defvar org-drill-presentation-timer-calls 0
+  "How many times the presentation timer has been called")
+
+(defun org-drill-presentation-timer-cancel ()
+  "Cancel the presentation timer."
+  (when org-drill-presentation-timer
+    (cancel-timer org-drill-presentation-timer))
+  (setq org-drill-presentation-timer nil)
+  (setq org-drill-presentation-timer-calls 0))
+
 (defun org-drill-presentation-minibuffer-timer-function
     (item-start-time full-prompt)
   "Return prompt for mini-buffer in `org-drill-response-mode'."
@@ -1686,7 +1702,10 @@ Consider reformulating the item to make it easier to remember.\n"
     (message (concat (if (>= (time-to-seconds elapsed) (* 60 60))
                          "++:++ "
                        (format-time-string "%M:%S " elapsed))
-                     full-prompt))))
+                     full-prompt)))
+  ;; if we have done it this many times, we probably want to stop
+  (when (< 10 (incf org-drill-presentation-timer-calls))
+    (org-drill-presentation-timer-cancel)))
 
 (define-derived-mode org-drill-response-mode nil "Org-Drill")
 (define-key org-drill-response-mode-map [return] 'org-drill-response-rtn)
@@ -1727,9 +1746,11 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (defun org-drill-response-get-buffer-create ()
   (let ((local-current-input-method
-         current-input-method))
+         current-input-method)
+        (cb (current-buffer)))
     (with-current-buffer
         (get-buffer-create "*Org-Drill*")
+      (setq org-drill-response-associated-buffer cb)
       (erase-buffer)
       (org-drill-response-mode)
       (set-input-method local-current-input-method)
@@ -1758,19 +1779,20 @@ You seem to be having a lot of trouble memorising this item.
 Consider reformulating the item to make it easier to remember.\n"
                                        'face '(:foreground "red"))
                            full-prompt)))
-      (setq org-drill-presentation-timer
-            (run-with-idle-timer 1 t
-                    #'org-drill-presentation-minibuffer-timer-function
-                    item-start-time full-prompt))
-      (let ((exit-kind)
+    (org-drill-presentation-timer-cancel)
+    (setq org-drill-presentation-timer
+          (run-with-idle-timer 1 t
+                               #'org-drill-presentation-minibuffer-timer-function
+                               item-start-time full-prompt)
+          org-drill-presentation-timer-calls 0)
+    (let ((exit-kind)
             (buf
              (org-drill-response-get-buffer-create)))
         (save-window-excursion
           (select-window
            (display-buffer-below-selected buf nil))
           (recursive-edit)
-          (cancel-timer org-drill-presentation-timer)
-          (setq org-drill-presentation-timer nil)
+          (org-drill-presentation-timer-cancel)
           exit-kind))))
 
 (cl-defun org-drill-presentation-prompt-for-string (prompt)
@@ -2420,6 +2442,9 @@ the latter option leaves the drill session suspended; it can be resumed
 later using `org-drill-resume'.
 
 See `org-drill' for more details."
+  (org-drill-entry-f #'org-drill-reschedule))
+
+(defun org-drill-entry-f(complete-func)
   (interactive)
   (org-drill-goto-drill-entry-heading)
   ;;(unless (org-part-of-drill-entry-p)
@@ -2466,8 +2491,7 @@ See `org-drill' for more details."
                   'skip)
                  (t
                   (save-excursion
-                    (funcall answer-fn
-                             (lambda () (org-drill-reschedule))))))))
+                    (funcall answer-fn complete-func))))))
             (org-remove-latex-fragment-image-overlays)))))))
 
 
@@ -2856,17 +2880,8 @@ STATUS is one of the following values:
       (length *org-drill-old-mature-entries*)
       (length *org-drill-failed-entries*))
    (incf cnt))
-  (cond
-   ((not (org-drill-entry-p))
-    nil)               ; skip
-   (t
-    (when (and (not warned-about-id-creation)
-               (null (org-id-get)))
-      (message (concat "Creating unique IDs for items "
-                       "(slow, but only happens once)"))
-      (sit-for 0.5)
-      (setq warned-about-id-creation t))
-    (org-id-get-create) ; ensure drill entry has unique ID
+  (when (org-drill-entry-p)
+    (org-drill-id-get-create-with-warning)
     (destructuring-bind (status due age)
         (org-drill-entry-status)
       (case status
@@ -2889,7 +2904,17 @@ STATUS is one of the following values:
          (push (list (point-marker) due age) overdue-data))
         (:old
          (push (point-marker) *org-drill-old-mature-entries*))
-        )))))
+        ))))
+
+
+(defun org-drill-id-get-create-with-warning()
+  (when (and (not warned-about-id-creation)
+             (null (org-id-get)))
+    (message (concat "Creating unique IDs for items "
+                     "(slow, but only happens once)"))
+    (sit-for 0.5)
+    (setq warned-about-id-creation t))
+  (org-id-get-create))
 
 
 (defun org-drill (&optional scope drill-match resume-p)
@@ -2981,7 +3006,10 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               (message "I did not find any pending drill items."))
              (t
               (org-drill-entries resume-p)
-              (message "Drill session finished!"))))
+              (message "Drill session finished!")
+              (sit-for 1)
+              (message nil)
+              )))
         (progn
           (unless end-pos
             (setq *org-drill-cram-mode* nil)
@@ -3004,6 +3032,8 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
       (if org-drill-save-buffers-after-drill-sessions-p
           (save-some-buffers))
       (message "Drill session finished!")
+      (sit-for 1)
+      (message nil)
       ))))
 
 
@@ -3351,7 +3381,9 @@ the name of the tense.")
                 (or (second (assoc-string tense org-drill-verb-tense-alist t))
                     "hotpink")
                 :background
-                (second (assoc-string mood org-drill-verb-tense-alist t))))
+                (or
+                 (second (assoc-string mood org-drill-verb-tense-alist t))
+                 "black")))
     (setq infinitive (propertize infinitive 'face highlight-face))
     (setq translation (propertize translation 'face highlight-face))
     (if tense (setq tense (propertize tense 'face highlight-face)))
@@ -3621,5 +3653,263 @@ returns its return value."
        (prog1 (org-drill-presentation-prompt)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
+
+;;; Leitner Learning
+(defvar org-drill-leitner-boxed-entries nil
+  "All leitner entries that are currently in an active box.")
+
+(defvar org-drill-leitner-unboxed-entries nil
+  "All leitner entries that are not in a box.")
+
+(defvar org-drill-leitner-promote-to-drill-p t)
+
+(defvar org-drill-leitner-completed 0
+  "The number of entries that have been completed this time.")
+
+(defvar org-drill-leitner-tag "leitner")
+
+(defun org-drill-sm-or-leitner ()
+  (interactive)
+  ;; org-drill-again uses org-drill-pending-entry-count to decide
+  ;; whether it needs to scan or not.
+  (let ((pending (org-drill-pending-entry-count)))
+    (unless (plusp pending)
+      (let ((warned-about-id-creation nil)
+            (cnt 0)
+            (overdue-data nil)
+            (end-pos nil))
+        (org-map-drill-entries
+         'org-map-drill-entry-function
+         nil nil)))
+    ;; if the overdue entries are not ones we have just created
+    (if (> (org-drill-pending-entry-count) org-drill-leitner-completed)
+        ;; we should have scanned previously if we need to
+        (progn
+          (message "Org Drill: Starting SM learning")
+          (sit-for 0.5)
+          (org-drill-again))
+      (message "Org Drill: Starting leitner learning")
+      (sit-for 0.5)
+      (org-drill-leitner))))
+
+(defun org-drill-leitner ()
+  "Perform Leitner learning"
+  (interactive)
+  (let ((org-drill-leitner-boxed-entries nil)
+        (org-drill-leitner-unboxed-entries nil)
+        (warned-about-id-creation nil)
+        (count 0))
+    (org-drill-all-leitner-capture)
+    ;; make sure we have enough (or at least the maximum number we
+    ;; can) of boxed entities
+    (when (<
+           (length org-drill-leitner-boxed-entries)
+           (- org-drill-maximum-items-per-session count))
+      (org-drill-leitner-start-box
+       (- org-drill-maximum-items-per-session
+          (length org-drill-leitner-boxed-entries)
+          count))
+      (setq org-drill-leitner-boxed-entries nil)
+      (setq org-drill-leitner-unboxed-entries nil)
+      (org-drill-all-leitner-capture))
+    (pcase
+        (catch 'user-exit
+          (seq-map
+           (lambda (loc)
+             (org-drill-goto-entry loc)
+             (let ((r (org-drill-leitner-entry)))
+               ;; short circuit if necessary
+               (unless (eq t r)
+                 (throw 'user-exit (list r loc)))))
+           (org-drill-shuffle
+            (seq-take org-drill-leitner-boxed-entries
+                      org-drill-maximum-items-per-session))))
+      (`(quit ,_)  t)
+      (`(edit ,loc)
+       (org-drill-goto-entry loc)
+       (org-reveal)
+       (org-show-entry))
+      (`,_
+       (message "Finished Leitner Learning: %s complete today, %s in process, %s to start"
+                org-drill-leitner-completed
+                (length org-drill-leitner-boxed-entries)
+                (length org-drill-leitner-unboxed-entries))))))
+
+;; take from John Kitchen
+(defun org-drill-swap (LIST el1 el2)
+  "in LIST swap indices EL1 and EL2 in place"
+  (let ((tmp (elt LIST el1)))
+    (setf (elt LIST el1) (elt LIST el2))
+    (setf (elt LIST el2) tmp)))
+
+(defun org-drill-shuffle (LIST)
+  "Shuffle the elements in LIST.
+shuffling is done in place."
+  (loop for i in (reverse (number-sequence 1 (1- (length LIST))))
+        do (let ((j (random (+ i 1))))
+             (org-drill-swap LIST i j)))
+  LIST)
+
+(defun org-drill-leitner-start-box (number)
+  "Box some items for the first time."
+  (message "Starting %s new items" number)
+  (sit-for 0.25)
+  (seq-map
+   (lambda (loc)
+     (org-drill-goto-entry loc)
+     (message "New leitner entry: %s" (org-drill-get-entry-text))
+     (sit-for 0.5)
+     (org-set-property "DRILL_LEITNER_BOX" "1"))
+   (seq-take
+    (org-drill-shuffle (seq-copy org-drill-leitner-unboxed-entries))
+    number)))
+
+(defun org-drill-map-leitner (func &optional scope)
+  "Return all entries marked with leitner tag."
+  (let ((scope (or scope org-drill-scope)))
+    (org-map-entries
+     func (concat "+" "leitner")
+     (org-drill-current-scope scope))))
+
+(defun org-drill-all-leitner-capture (&optional scope)
+  "Capture all items marked with a leitner tag"
+  (let ((cnt 0)
+        (org-drill-question-tag org-drill-leitner-tag))
+    (org-drill-map-leitner #'org-drill-map-leitner-capture scope)
+    (setq org-drill-leitner-boxed-entries
+          (nreverse org-drill-leitner-boxed-entries)
+          org-drill-leitner-unboxed-entries
+          (nreverse org-drill-leitner-unboxed-entries))))
+
+(defun org-drill-map-leitner-capture ()
+  "Capture this entry if it is a valid leitner entry"
+  ;; This bit is all rather shared with org-map-drill-entry-function
+  (org-drill-progress-message
+   (+ (length org-drill-leitner-unboxed-entries)
+      (length org-drill-leitner-boxed-entries))
+   ;; This variable is dynamically scoped in!
+   (incf cnt))
+  (when (org-drill-entry-p)
+    (org-drill-id-get-create-with-warning)
+    (let ((leitner-box (org-entry-get (point) "DRILL_LEITNER_BOX" nil)))
+      (cond
+       ;; Entries we have not looked at yet
+       ((null leitner-box)
+        (push (point-marker) org-drill-leitner-unboxed-entries))
+       ;; Entries we have finished with
+       ((> (string-to-number leitner-box) 5) nil)
+       ((and
+         (>= (string-to-number leitner-box) 0)
+         (<= (string-to-number leitner-box) 5))
+        (push (point-marker)
+              org-drill-leitner-boxed-entries))))))
+
+(defun org-drill-leitner-entry ()
+  "Interactive drill for the current entry."
+  (let ((org-drill-question-tag org-drill-leitner-tag))
+    (org-drill-entry-f #'org-drill-leitner-rebox)))
+
+(defun org-drill-leitner-rebox ()
+  "Returns quality rating (0-5), or nil if the user quit."
+  (let ((ch nil)
+        (input nil)
+        (typed-answer-statement (if drill-typed-answer
+                                    (format "Your answer: %s\n"
+                                            drill-typed-answer)
+                                  ""))
+        (key-prompt (format "(0-5, %c=help, %c=edit, %c=tags, %c=quit)"
+                            org-drill--help-key
+                            org-drill--edit-key
+                            org-drill--tags-key
+                            org-drill--quit-key)))
+    (save-excursion
+      (while (not (memq ch (list org-drill--quit-key
+                                 org-drill--edit-key
+                                 7          ; C-g
+                                 ?0 ?1 ?2 ?3 ?4 ?5)))
+        (run-hooks 'org-drill-display-answer-hook)
+        (setq input (org-drill--read-key-sequence
+                     (if (eq ch org-drill--help-key)
+                         (format "0-2 Means you have forgotten the item.
+3-5 Means you have remembered the item.
+
+0 - Completely forgot. (Back to Zero)
+1 - Even after seeing the answer, it still took a bit to sink in (Back to one)
+2 - After seeing the answer, you remembered it (Remain in current Box)
+3 - It took you awhile, but you finally remembered. (Forward One)
+4 - After a little bit of thought you remembered. (Forward One)
+5 - You remembered the item really easily. (Forward One)
+
+%sHow well did you do? %s"
+                                 typed-answer-statement
+                                 key-prompt)
+                       (format "%sHow well did you do? %s"
+                               typed-answer-statement key-prompt))))
+        ;; All this is shared with drill-reschedule. And what does it do?
+        (cond
+         ((stringp input)
+          (setq ch (elt input 0)))
+         ((and (vectorp input) (symbolp (elt input 0)))
+          (case (elt input 0)
+            (up (ignore-errors (forward-line -1)))
+            (down (ignore-errors (forward-line 1)))
+            (left (ignore-errors (backward-char)))
+            (right (ignore-errors (forward-char)))
+            (prior (ignore-errors (scroll-down))) ; pgup
+            (next (ignore-errors (scroll-up)))))  ; pgdn
+         ((and (vectorp input) (listp (elt input 0))
+               (eventp (elt input 0)))
+          (case (car (elt input 0))
+            (wheel-up (ignore-errors (mwheel-scroll (elt input 0))))
+            (wheel-down (ignore-errors (mwheel-scroll (elt input 0)))))))
+        (if (eql ch org-drill--tags-key)
+            (org-set-tags-command))))
+    (cond
+     ((and (>= ch ?0) (<= ch ?5))
+      (let ((current-box
+             (string-to-number
+              (org-entry-get (point) "DRILL_LEITNER_BOX" nil))))
+        (cond
+         ((or (= ch ?0))
+          (message "Refiled down to box: 1")
+          (org-set-property "DRILL_LEITNER_BOX" "1"))
+         ((or (= ch ?1))
+          (let ((box
+                 (format
+                  "%s"
+                  (if (eq current-box 1)
+                      1
+                    (- current-box 1)))))
+            (message "Refiled down to box: %s" box)
+            (sit-for 0.3)
+            (org-set-property
+             "DRILL_LEITNER_BOX" box)))
+         ((= ch ?2)
+          ;; neither promote nor demote
+          (message "Remaining in box: %s" current-box)
+          (sit-for 0.3))
+         ((or (= ch ?3) (= ch ?4)(= ch ?5))
+          (org-drill-leitner-promote current-box)))
+        t))
+     ((= ch org-drill--edit-key)
+      'edit)
+     ((= ch org-drill--quit-key)
+      'quit)
+     (t nil))))
+
+(defun org-drill-leitner-promote (current-box)
+  "Promote the current entry to drill or otherwise"
+  (when (eq current-box 5)
+    (org-toggle-tag "leitner" 'off)
+    (when org-drill-leitner-promote-to-drill-p
+      (org-toggle-tag "drill" 'on))
+    (incf org-drill-leitner-completed))
+  (org-set-property
+   "DRILL_LEITNER_BOX"
+   (format
+    "%s"
+    (+ current-box 1)))
+  (message "Refiled to box: %s" (+ current-box 1))
+  (sit-for 0.3))
 
 (provide 'org-drill)
