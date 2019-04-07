@@ -331,6 +331,22 @@ even if their bodies are empty."
                 :value-type function))
 
 
+(defcustom org-drill-card-tags-alist
+  '(("explain" nil org-drill-explain-answer-presenter
+     org-drill-explain-cleaner))
+"Alist associating tags with presentation functions.
+
+The alist is of the form (TAG QUESTION-PRESENTER ANSWER-PRESENTER CLEANER).
+
+When a card with the relevant TAG is tested, QUESTION-PRESENTER
+will be called when the card is displayed to the user,
+ANSWER-PRESENTER will be called with point in the entry when the
+answer is displayed to the user and CLEANER will be called when
+the answer is accepted. In all cases, point will be in the card
+in question when the function is called. All values may be nil in
+which case no function will be called.")
+
+
 (defcustom org-drill-scope
   'file
   "The scope in which to search for drill items when conducting a
@@ -2444,7 +2460,12 @@ later using `org-drill-resume'.
 See `org-drill' for more details."
   (org-drill-entry-f #'org-drill-reschedule))
 
-(defun org-drill-entry-f(complete-func)
+(defun org-drill-card-tag-caller (item tag)
+  (funcall
+   (or (nth item (assoc tag org-drill-card-tags-alist))
+       'ignore)))
+
+(defun org-drill-entry-f (complete-func)
   (interactive)
   (org-drill-goto-drill-entry-heading)
   ;;(unless (org-part-of-drill-entry-p)
@@ -2472,27 +2493,38 @@ See `org-drill' for more details."
                                    'org-drill-present-default-answer)
                      present-empty-cards (third presentation-fn)
                      presentation-fn (first presentation-fn)))
-          (prog1
-              (cond
-               ((null presentation-fn)
-                (message "%s:%d: Unrecognised card type '%s', skipping..."
-                         (buffer-name) (point) card-type)
-                (sit-for 0.5)
-                'skip)
-               (t
-                (setq cont (funcall presentation-fn))
-                (cond
-                 ((not cont)
-                  (message "Quit")
-                  nil)
-                 ((eql cont 'edit)
-                  'edit)
-                 ((eql cont 'skip)
-                  'skip)
-                 (t
-                  (save-excursion
-                    (funcall answer-fn complete-func))))))
-            (org-remove-latex-fragment-image-overlays)))))))
+          (let* ((tags (org-get-tags))
+                 (rtn
+                  (cond
+                   ((null presentation-fn)
+                    (message "%s:%d: Unrecognised card type '%s', skipping..."
+                             (buffer-name) (point) card-type)
+                    (sit-for 0.5)
+                    'skip)
+                   (t
+                    (mapc
+                     (apply-partially 'org-drill-card-tag-caller 1)
+                     (org-get-tags))
+                    (setq cont (funcall presentation-fn))
+                    (cond
+                     ((not cont)
+                      (message "Quit")
+                      nil)
+                     ((eql cont 'edit)
+                      'edit)
+                     ((eql cont 'skip)
+                      'skip)
+                     (t
+                      (save-excursion
+                        (mapc
+                         (apply-partially 'org-drill-card-tag-caller 2)
+                         (org-get-tags))
+                        (funcall answer-fn complete-func))))))))
+            (mapc
+             (apply-partially 'org-drill-card-tag-caller 3)
+             (org-get-tags))
+            (org-remove-latex-fragment-image-overlays)
+            rtn))))))
 
 
 (defun org-drill-entries-pending-p ()
@@ -3653,6 +3685,42 @@ returns its return value."
        (prog1 (org-drill-presentation-prompt)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
+
+;; org-drill :explain: implementations
+(defun org-drill-get-parent-entry-text ()
+  "Fetch the text from the parent entry"
+  (save-excursion
+    (save-restriction
+      (widen)
+      (outline-up-heading 1 t)
+      (org-drill-get-entry-text))))
+
+(defvar org-drill-explain-overlay nil)
+
+(defun org-drill-explain-entry-p ()
+  "Returns non-nil if an entry is associated with explanation"
+  (member "explain" (org-get-tags nil t)))
+
+(defun org-drill-end-of-entry-pos ()
+  (save-excursion
+    (org-end-of-subtree)
+    (point)))
+
+(defun org-drill-explain-answer-presenter ()
+  (when org-drill-explain-overlay
+    (delete-overlay org-drill-explain-overlay))
+  (let* ((end (org-drill-end-of-entry-pos))
+         (ov (make-overlay
+             end end
+             (current-buffer))))
+    (overlay-put ov 'after-string
+                 (concat "\n\nExplanation:\n\n"
+                         (org-drill-get-parent-entry-text)))
+    (setq org-drill-explain-overlay ov)))
+
+(defun org-drill-explain-cleaner ()
+  (when org-drill-explain-overlay
+      (delete-overlay org-drill-explain-overlay)))
 
 ;;; Leitner Learning
 (defvar org-drill-leitner-boxed-entries nil
