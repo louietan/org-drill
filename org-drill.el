@@ -3687,19 +3687,32 @@ returns its return value."
 
 
 ;; org-drill :explain: implementations
-(defun org-drill-get-parent-entry-text ()
-  "Fetch the text from the parent entry"
+(defun org-drill-get-explain-text (&optional existing-text)
+  "Fetch the explaination texts for this entry.
+
+Explaination text is found in parent entries with an :explain:
+tag. If there are multiple parents entries with such a tag, all
+of them are returned.
+
+Returns a list of strings."
   (save-excursion
     (save-restriction
       (widen)
-      (outline-up-heading 1 t)
-      (org-drill-get-entry-text))))
+      (if (>= 1 (funcall outline-level))
+          existing-text
+        (outline-up-heading 1 t)
+        (if (org-drill-explain-entry-p t)
+            (org-drill-get-explain-text
+             (cons
+              (org-drill-get-entry-text)
+              existing-text))
+          existing-text)))))
 
 (defvar org-drill-explain-overlay nil)
 
-(defun org-drill-explain-entry-p ()
+(defun org-drill-explain-entry-p (&optional no-inherit)
   "Returns non-nil if an entry is associated with explanation"
-  (member "explain" (org-get-tags nil t)))
+  (member "explain" (org-get-tags nil no-inherit)))
 
 (defun org-drill-end-of-entry-pos ()
   (save-excursion
@@ -3707,16 +3720,18 @@ returns its return value."
     (point)))
 
 (defun org-drill-explain-answer-presenter ()
-  (when org-drill-explain-overlay
-    (delete-overlay org-drill-explain-overlay))
-  (let* ((end (org-drill-end-of-entry-pos))
-         (ov (make-overlay
-             end end
-             (current-buffer))))
-    (overlay-put ov 'after-string
-                 (concat "\n\nExplanation:\n\n"
-                         (org-drill-get-parent-entry-text)))
-    (setq org-drill-explain-overlay ov)))
+  (save-excursion
+    (when org-drill-explain-overlay
+      (delete-overlay org-drill-explain-overlay))
+    (let* ((end (org-drill-end-of-entry-pos))
+           (ov (make-overlay
+                end end
+                (current-buffer))))
+      (overlay-put ov 'after-string
+                   (format "\n\nExplanation:\n\n%s"
+                           (mapconcat 'identity
+                                      (org-drill-get-explain-text) "\n\n")))
+      (setq org-drill-explain-overlay ov))))
 
 (defun org-drill-explain-cleaner ()
   (when org-drill-explain-overlay
