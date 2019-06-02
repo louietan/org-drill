@@ -1,11 +1,15 @@
 # Introduction
 
-Org-Drill is an extension for [Org mode](http://orgmode.org/). Org-Drill uses a [spaced repetition](http://en.wikipedia.org/wiki/Spaced_repetition)
-algorithm to conduct interactive "drill sessions", using org files as sources
-of facts to be memorised. Each topic is treated as a "flash card". The material
-to be remembered is presented to the student in random order. The student rates
-his or her recall of each item, and this information is used to schedule the
-item for later revision.
+Please see [the history](#history) of this repository.
+
+Org-Drill is an extension for [Org
+mode](http://orgmode.org/). Org-Drill uses a [spaced
+repetition](http://en.wikipedia.org/wiki/Spaced_repetition) algorithm
+to conduct interactive "drill sessions", using org files as sources of
+facts to be memorised. Each topic is treated as a "flash card". The
+material to be remembered is presented to the student in random
+order. The student rates his or her recall of each item, and this
+information is used to schedule the item for later revision.
 
 Each drill session can be restricted to topics in the current buffer
 (default), one or several files, all agenda files, or a subtree. A single
@@ -947,4 +951,17 @@ or give it different tags or properties, for example.
 
 # Author
 
-Org-Drill is written by Paul Sexton.
+Org-Drill is maintained by Phillip Lord
+Org-Drill was originally written by Paul Sexton.
+
+# History
+
+This version of org-drill is a fork of the original written by Paul.
+I (Phil Lord) made this fork as org-drill was unmaintained.
+
+https://bitbucket.org/eeeickythump/org-drill/issues/63/maintainership
+
+Paul did email me and tell me that he was happy with this, but I have
+subsequently been unable to get access to the original project; as
+suggested in the original issue, I have moved to git because I am more
+familiar with it.
