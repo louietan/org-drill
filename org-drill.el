@@ -56,7 +56,7 @@
 (require 'hi-lock)
 (require 'org)
 (require 'org-id)
-;;(require 'org-learn)
+(require 'org-learn)
 (require 'savehist)
 
 (require 'seq)
