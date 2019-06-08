@@ -26,7 +26,20 @@
 
 ;;; Code:
 
+(require 'assess)
 (require 'org-drill)
+
+(defvar this-directory
+  (file-name-directory
+   (or load-file-name (buffer-file-name))))
 
 (ert-deftest load-test ()
   (should t))
+
+(ert-deftest find-entries ()
+  (should
+   (equal '(2 30 58)
+      (assess-with-find-file
+          (assess-make-related-file
+           (concat this-directory "one-two-three.org"))
+        (org-map-drill-entries (lambda () (point)) 'file nil)))))
