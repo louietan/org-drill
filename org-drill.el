@@ -4000,5 +4000,41 @@ shuffling is done in place."
   (message "Refiled to box: %s" (+ current-box 1))
   (sit-for 0.3))
 
+;;; Test functions
+(defun org-drill-test-display ()
+  (interactive)
+  ;; set tag to anything
+  (org-toggle-tag "zysygy")
+  (unwind-protect
+      (let ((org-drill-question-tag "zysygy"))
+        (org-drill-entry-f #'org-drill-test-display-rescheduler))
+      (org-toggle-tag "zysygy")))
+
+(defun org-drill-test-display-rescheduler ()
+  (run-hooks 'org-drill-display-answer-hook)
+  ;; Normally, the rescheduler waits for input at this point
+  (read-key-sequence "Press anything to continue"))
+
+(defun org-drill-leitner-vs-drill-entries ()
+  (interactive)
+  (let
+      ((warned-about-id-creation nil)
+       (number-drill-entries 0)
+       (org-drill-leitner-unboxed-entries nil)
+       (org-drill-leitner-boxed-entries nil))
+    (org-drill-all-leitner-capture)
+    (org-map-drill-entries
+     (lambda ()
+       (setq number-drill-entries (+ 1 number-drill-entries)))
+     org-drill-scope nil)
+    (message "There are %s drill entries\nThere are %s leitner entries\nA total of %s entries."
+             number-drill-entries
+             (+ (length org-drill-leitner-boxed-entries)
+                (length org-drill-leitner-unboxed-entries))
+             (+ number-drill-entries
+                (+ (length org-drill-leitner-boxed-entries)
+                   (length org-drill-leitner-unboxed-entries))))))
+
+
 (provide 'org-drill)
 ;;; org-drill.el ends here
