@@ -50,7 +50,6 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
 (eval-when-compile (require 'hi-lock))
 (require 'cl-lib)
 (require 'hi-lock)
