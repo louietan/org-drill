@@ -28,5 +28,5 @@
 
 (require 'org-drill)
 
-(ert-deftest hello-world ()
+(ert-deftest load-test ()
   (should t))
