@@ -1,3 +1,4 @@
 /.cask
 org-drill.html
-*elc
+/*.elc
+/makefile-local
