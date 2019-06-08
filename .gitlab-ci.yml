@@ -1,0 +1,5 @@
+image: "silex/emacs:26.2-dev"
+
+test:
+  script:
+    - make test
