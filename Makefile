@@ -14,6 +14,8 @@ install:
 
 test: install just-test
 
+robot-and-test: robot-test just-test
+
 just-test:
 	$(EMACS_ENV) $(CASK) emacs --batch -q \
 	--directory=. \
@@ -32,5 +34,8 @@ docker-test:
 	$(MAKE) test-cp DOCKER_TAG=26.2
 	$(MAKE) test-git DOCKER_TAG=25.3
 	$(MAKE) test-cp DOCKER_TAG=25.3
+
+robot-test:
+	$(EMACS_ENV) ./robot/robot-test.sh
 
 .PHONY: test

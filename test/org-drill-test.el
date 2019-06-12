@@ -43,3 +43,4 @@
           (assess-make-related-file
            (concat this-directory "one-two-three.org"))
         (org-map-drill-entries (lambda () (point)) 'file nil)))))
+
