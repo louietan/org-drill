@@ -55,8 +55,11 @@
 (require 'hi-lock)
 (require 'org)
 (require 'org-id)
-(require 'org-learn)
 (require 'savehist)
+
+(eval-when-compile
+  (require 'cl))
+
 
 (require 'seq)
 
@@ -1131,7 +1134,24 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 
 ;;; SM5 Algorithm =============================================================
 
+(defun modify-e-factor (ef quality)
+  (if (< ef 1.3)
+      1.3
+    (+ ef (- 0.1 (* (- 5 quality) (+ 0.08 (* (- 5 quality) 0.02)))))))
 
+(defun modify-of (of q fraction)
+  (let ((temp (* of (+ 0.72 (* q 0.07)))))
+    (+ (* (- 1 fraction) of) (* fraction temp))))
+
+(defun set-optimal-factor (n ef of-matrix of)
+  (let ((factors (assoc n of-matrix)))
+    (if factors
+	(let ((ef-of (assoc ef (cdr factors))))
+	  (if ef-of
+	      (setcdr ef-of of)
+	    (push (cons ef of) (cdr factors))))
+      (push (cons n (list (cons ef of))) of-matrix)))
+  of-matrix)
 
 (defun initial-optimal-factor-sm5 (n ef)
   (if (= 1 n)

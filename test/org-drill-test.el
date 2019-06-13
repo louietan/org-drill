@@ -1,4 +1,4 @@
-;;; lentic-test.el --- Tests
+;;; org-drill-test.el
 
 ;;; Header:
 
@@ -43,4 +43,3 @@
           (assess-make-related-file
            (concat this-directory "one-two-three.org"))
         (org-map-drill-entries (lambda () (point)) 'file nil)))))
-

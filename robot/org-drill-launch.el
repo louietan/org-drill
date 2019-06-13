@@ -8,8 +8,7 @@
 (set-frame-name "emacs-bot")
 
 (condition-case e
-    (progn (load-file "org-learn.el")
-           (load-file "org-drill.el"))
+    (load-file "org-drill.el")
   (error
    (with-temp-buffer
      (insert (format "%s" (error-message-string e)))
