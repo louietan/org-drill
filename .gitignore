@@ -2,3 +2,4 @@
 org-drill.html
 /*.elc
 /makefile-local
+/robot/Makefile
