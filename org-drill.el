@@ -56,11 +56,6 @@
 (require 'org)
 (require 'org-id)
 (require 'savehist)
-
-(eval-when-compile
-  (require 'cl))
-
-
 (require 'seq)
 
 (defgroup org-drill nil
@@ -261,9 +256,9 @@ the hidden cloze during a test.")
 
 (defun org-drill--compute-cloze-keywords ()
   (list (list (org-drill--compute-cloze-regexp)
-              (copy-list '(1 'org-drill-visible-cloze-face nil))
-              (copy-list '(2 'org-drill-visible-cloze-hint-face t))
-              (copy-list '(3 'org-drill-visible-cloze-face nil))
+              (cl-copy-list '(1 'org-drill-visible-cloze-face nil))
+              (cl-copy-list '(2 'org-drill-visible-cloze-hint-face t))
+              (cl-copy-list '(3 'org-drill-visible-cloze-face nil))
               )))
 
 (defvar-local org-drill-cloze-regexp
@@ -683,10 +678,10 @@ regardless of whether the test was successful.")
   (let ((idx (gensym)))
     `(if (null ,place)
          nil
-       (let ((,idx (random* (length ,place))))
+       (let ((,idx (cl-random (length ,place))))
          (prog1 (nth ,idx ,place)
-           (setq ,place (append (subseq ,place 0 ,idx)
-                                (subseq ,place (1+ ,idx)))))))))
+           (setq ,place (append (cl-subseq ,place 0 ,idx)
+                                (cl-subseq ,place (1+ ,idx)))))))))
 
 
 (defmacro push-end (val place)
@@ -703,7 +698,7 @@ value."
         temp
         (len (length list)))
     (while (< i len)
-      (setq j (+ i (random* (- len i))))
+      (setq j (+ i (cl-random (- len i))))
       (setq temp (nth i list))
       (setf (nth i list) (nth j list))
       (setf (nth j list) temp)
@@ -751,7 +746,7 @@ CMD is bound, or nil if it is not bound to a key."
            skip)))
 
 (defun org-drill-current-scope (scope)
-  (case scope
+  (cl-case scope
     (file nil)
     (file-no-restriction 'file)
     (directory
@@ -870,7 +865,7 @@ drill entry."
 ;;            (or (not (eql 'skip org-drill-leech-method))
 ;;                (not (org-drill-entry-leech-p)))
 ;;            (or (null item-time)         ; not scheduled
-;;                (not (minusp             ; scheduled for today/in past
+;;                (not (cl-minusp             ; scheduled for today/in past
 ;;                      (- (time-to-days (current-time))
 ;;                         (time-to-days item-time))))))))))
 
@@ -925,7 +920,7 @@ from the entry at point."
 (defun org-drill-entry-due-p ()
   (let ((due (org-drill-entry-days-overdue)))
     (and (not (null due))
-         (not (minusp due)))))
+         (not (cl-minusp due)))))
 
 
 (defun org-drill-entry-new-p ()
@@ -984,10 +979,10 @@ from the entry at point."
   "Returns a random number between 0.5 and 1.5."
   (let ((a 0.047)
         (b 0.092)
-        (p (- (random* 1.0) 0.5)))
+        (p (- (cl-random 1.0) 0.5)))
     (cl-flet ((sign (n)
                     (cond ((zerop n) 0)
-                          ((plusp n) 1)
+                          ((cl-plusp n) 1)
                           (t -1))))
       (/ (+ 100 (* (* (/ -1 b) (log (- 1 (* (/ b a ) (abs p)))))
                    (sign p)))
@@ -996,8 +991,8 @@ from the entry at point."
 (defun pseudonormal (mean variation)
   "Random numbers in a pseudo-normal distribution with mean MEAN, range
     MEAN-VARIATION to MEAN+VARIATION"
-  (+  (random* variation)
-      (random* variation)
+  (+  (cl-random variation)
+      (cl-random variation)
       (- variation)
       mean))
 
@@ -1041,7 +1036,7 @@ in the matrix."
      (learn-str
       (let ((learn-data (or (and learn-str
                                  (read learn-str))
-                            (copy-list initial-repetition-state))))
+                            (cp-copy-list initial-repetition-state))))
         (list (nth 0 learn-data)        ; last interval
               (nth 1 learn-data)        ; repetitions
               (org-drill-entry-failure-count)
@@ -1099,8 +1094,8 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
                   (/ (+ quality (* meanq total-repeats 1.0))
                      (1+ total-repeats))
                 quality))
-  (assert (> n 0))
-  (assert (and (>= quality 0) (<= quality 5)))
+  (cl-assert (> n 0))
+  (cl-assert (and (>= quality 0) (<= quality 5)))
   (if (<= quality org-drill-failure-quality)
       ;; When an item is failed, its interval is reset to 0,
       ;; but its EF is unchanged
@@ -1114,7 +1109,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
              ((= n 2)
               (cond
                (org-drill-add-random-noise-to-intervals-p
-                (case quality
+                (cl-case quality
                   (5 6)
                   (4 4)
                   (3 3)
@@ -1179,11 +1174,11 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
                                                   of-matrix &optional delta-days)
   (if (zerop n) (setq n 1))
   (if (null ef) (setq ef 2.5))
-  (assert (> n 0))
-  (assert (and (>= quality 0) (<= quality 5)))
+  (cl-assert (> n 0))
+  (cl-assert (and (>= quality 0) (<= quality 5)))
   (unless of-matrix
     (setq of-matrix org-drill-sm5-optimal-factor-matrix))
-  (setq of-matrix (cl-copy-tree of-matrix))
+  (setq of-matrix (copy-tree of-matrix))
 
   (setq meanq (if meanq
                   (/ (+ quality (* meanq total-repeats 1.0))
@@ -1196,7 +1191,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
                            quality org-drill-learn-fraction))
         (interval nil))
     (when (and org-drill-adjust-intervals-for-early-and-late-repetitions-p
-               delta-days (minusp delta-days))
+               delta-days (cl-minusp delta-days))
       (setq new-of (org-drill-early-interval-factor
                     (get-optimal-factor-sm5 n ef of-matrix)
                     (inter-repetition-interval-sm5
@@ -1288,46 +1283,46 @@ Returns the new item data, as a list of 6 values:
 - AVERAGE-QUALITY
 - TOTAL-REPEATS.
 See the documentation for `org-drill-get-item-data' for a description of these."
-  (assert (>= repeats 0))
-  (assert (and (>= quality 0) (<= quality 5)))
-  (assert (or (null meanq) (and (>= meanq 0) (<= meanq 5))))
+  (cl-assert (>= repeats 0))
+  (cl-assert (and (>= quality 0) (<= quality 5)))
+  (cl-assert (or (null meanq) (and (>= meanq 0) (<= meanq 5))))
   (let ((next-interval nil))
     (setf meanq (if meanq
                     (/ (+ quality (* meanq totaln 1.0)) (1+ totaln))
                   quality))
     (cond
      ((<= quality org-drill-failure-quality)
-      (incf failures)
+      (cl-incf failures)
       (setf repeats 0
             next-interval -1))
      ((or (zerop repeats)
           (zerop last-interval))
       (setf next-interval (org-drill-simple8-first-interval failures))
-      (incf repeats)
-      (incf totaln))
+      (cl-incf repeats)
+      (cl-incf totaln))
      (t
       (let* ((use-n
               (if (and
                    org-drill-adjust-intervals-for-early-and-late-repetitions-p
-                   (numberp delta-days) (plusp delta-days)
-                   (plusp last-interval))
+                   (numberp delta-days) (cl-plusp delta-days)
+                   (cl-plusp last-interval))
                   (+ repeats (min 1 (/ delta-days last-interval 1.0)))
                 repeats))
              (factor (org-drill-simple8-interval-factor
                       (org-drill-simple8-quality->ease meanq) use-n))
              (next-int (* last-interval factor)))
         (when (and org-drill-adjust-intervals-for-early-and-late-repetitions-p
-                   (numberp delta-days) (minusp delta-days))
+                   (numberp delta-days) (cl-minusp delta-days))
           ;; The item was reviewed earlier than scheduled.
           (setf factor (org-drill-early-interval-factor
                         factor next-int (abs delta-days))
                 next-int (* last-interval factor)))
         (setf next-interval next-int)
-        (incf repeats)
-        (incf totaln))))
+        (cl-incf repeats)
+        (cl-incf totaln))))
     (list
      (if (and org-drill-add-random-noise-to-intervals-p
-              (plusp next-interval))
+              (cl-plusp next-interval))
          (* next-interval (org-drill-random-dispersal-factor))
        next-interval)
      repeats
@@ -1356,13 +1351,13 @@ item will be scheduled exactly this many days into the future."
         (weight (org-entry-get (point) "DRILL_CARD_WEIGHT")))
     (if (stringp weight)
         (setq weight (read weight)))
-    (destructuring-bind (last-interval repetitions failures
+    (cl-destructuring-bind (last-interval repetitions failures
                                        total-repeats meanq ease)
         (org-drill-get-item-data)
-      (destructuring-bind (next-interval repetitions ease
+      (cl-destructuring-bind (next-interval repetitions ease
                                          failures meanq total-repeats
                                          &optional new-ofmatrix)
-          (case org-drill-spaced-repetition-algorithm
+          (cl-case org-drill-spaced-repetition-algorithm
             (sm5 (determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats ofmatrix))
@@ -1377,8 +1372,8 @@ item will be scheduled exactly this many days into the future."
             (setq next-interval days-ahead))
 
         (if (and (null days-ahead)
-                 (numberp weight) (plusp weight)
-                 (not (minusp next-interval)))
+                 (numberp weight) (cl-plusp weight)
+                 (not (cl-minusp next-interval)))
             (setq next-interval
                   (max 1.0 (+ last-interval
                               (/ (- next-interval last-interval) weight)))))
@@ -1392,7 +1387,7 @@ item will be scheduled exactly this many days into the future."
         (cond
          ((= 0 days-ahead)
           (org-schedule '(4)))
-         ((minusp days-ahead)
+         ((cl-minusp days-ahead)
           (org-schedule nil (current-time)))
          (t
           (org-schedule nil (time-add (current-time)
@@ -1405,15 +1400,15 @@ item will be scheduled exactly this many days into the future."
 that the current item would be scheduled, based on a recall quality
 of QUALITY."
   (let ((weight (org-entry-get (point) "DRILL_CARD_WEIGHT")))
-    (destructuring-bind (last-interval repetitions failures
+    (cl-destructuring-bind (last-interval repetitions failures
                                        total-repeats meanq ease)
         (org-drill-get-item-data)
       (if (stringp weight)
           (setq weight (read weight)))
-      (destructuring-bind (next-interval repetitions ease
+      (cl-destructuring-bind (next-interval repetitions ease
                                          failures meanq total-repeats
                                          &optional ofmatrix)
-          (case org-drill-spaced-repetition-algorithm
+          (cl-case org-drill-spaced-repetition-algorithm
             (sm5 (determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats
@@ -1425,9 +1420,9 @@ of QUALITY."
                                                       quality failures meanq
                                                       total-repeats)))
         (cond
-         ((not (plusp next-interval))
+         ((not (cl-plusp next-interval))
           0)
-         ((and (numberp weight) (plusp weight))
+         ((and (numberp weight) (cl-plusp weight))
           (+ last-interval
              (max 1.0 (/ (- next-interval last-interval) weight))))
          (t
@@ -1495,7 +1490,7 @@ of QUALITY."
          ((stringp input)
           (setq ch (elt input 0)))
          ((and (vectorp input) (symbolp (elt input 0)))
-          (case (elt input 0)
+          (cl-case (elt input 0)
             (up (ignore-errors (forward-line -1)))
             (down (ignore-errors (forward-line 1)))
             (left (ignore-errors (backward-char)))
@@ -1504,7 +1499,7 @@ of QUALITY."
             (next (ignore-errors (scroll-up)))))  ; pgdn
          ((and (vectorp input) (listp (elt input 0))
                (eventp (elt input 0)))
-          (case (car (elt input 0))
+          (cl-case (car (elt input 0))
             (wheel-up (ignore-errors (mwheel-scroll (elt input 0))))
             (wheel-down (ignore-errors (mwheel-scroll (elt input 0)))))))
         (if (eql ch org-drill--tags-key)
@@ -1596,7 +1591,7 @@ the current topic."
 
 
 (defun org-drill--make-minibuffer-prompt (prompt)
-  (let ((status (first (org-drill-entry-status)))
+  (let ((status (cl-first (org-drill-entry-status)))
         (mature-entry-count (+ (length *org-drill-young-mature-entries*)
                                (length *org-drill-old-mature-entries*)
                                (length *org-drill-overdue-entries*))))
@@ -1607,11 +1602,11 @@ the current topic."
                ((eql status :failed) ?F)
                (*org-drill-cram-mode* ?C)
                (t
-                (case status
+                (cl-case status
                   (:new ?N) (:young ?Y) (:old ?o) (:overdue ?!)
                   (t ??)))))
              'face `(:foreground
-                     ,(case status
+                     ,(cl-case status
                         (:new org-drill-new-count-color)
                         ((:young :old) org-drill-mature-count-color)
                         ((:overdue :failed) org-drill-failed-count-color)
@@ -1745,7 +1740,7 @@ Consider reformulating the item to make it easier to remember.\n"
                        (format-time-string "%M:%S " elapsed))
                      full-prompt)))
   ;; if we have done it this many times, we probably want to stop
-  (when (< 10 (incf org-drill-presentation-timer-calls))
+  (when (< 10 (cl-incf org-drill-presentation-timer-calls))
     (org-drill-presentation-timer-cancel)))
 
 (define-derived-mode org-drill-response-mode nil "Org-Drill")
@@ -2028,7 +2023,7 @@ Note: does not actually alter the item."
         (p-max (save-excursion
                  (outline-next-heading)
                  (point))))
-    (assert (>= (- p-max p-min) (length replacements)))
+    (cl-assert (>= (- p-max p-min) (length replacements)))
     (dotimes (i (length replacements))
       (setq ovl (make-overlay (+ p-min (* 2 i))
                               (if (= i (1- (length replacements)))
@@ -2158,7 +2153,7 @@ Note: does not actually alter the item."
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
-           (goto-char (nth (random* (min 2 (length drill-sections)))
+           (goto-char (nth (cl-random (min 2 (length drill-sections)))
                            drill-sections))
            (org-show-subtree)))
        (org-drill--show-latex-fragments)
@@ -2177,7 +2172,7 @@ Note: does not actually alter the item."
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
-           (goto-char (nth (random* (length drill-sections)) drill-sections))
+           (goto-char (nth (cl-random (length drill-sections)) drill-sections))
            (org-show-subtree)))
        (org-drill--show-latex-fragments)
        (ignore-errors
@@ -2223,10 +2218,10 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
                                                  org-bracket-link-regexp 1))))
             (unless (or in-regexp?
                         (org-inside-LaTeX-fragment-p))
-              (incf match-count)))))
-      (if (minusp number-to-hide)
+              (cl-incf match-count)))))
+      (if (cl-minusp number-to-hide)
           (setq number-to-hide (+ match-count number-to-hide)))
-      (when (plusp match-count)
+      (when (cl-plusp match-count)
         (let* ((positions (shuffle-list (loop for i from 1
                                               to match-count
                                               collect i)))
@@ -2241,7 +2236,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
           (if force-show-last
               (setq positions (remove match-count positions)))
           (setq match-nums
-                (subseq positions
+                (cl-subseq positions
                         0 (min number-to-hide (length positions))))
           ;; (dolist (pos-to-hide match-nums)
           (save-excursion
@@ -2252,7 +2247,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
                         (or (org-pos-in-regexp (match-beginning 0)
                                                org-bracket-link-regexp 1)
                             (org-inside-LaTeX-fragment-p)))
-                (incf cnt)
+                (cl-incf cnt)
                 (if (memq cnt match-nums)
                     (org-drill-hide-matched-cloze-text)))))))
       ;; (loop
@@ -2293,11 +2288,11 @@ the second to last, etc."
                                                  org-bracket-link-regexp 1))))
             (unless (or in-regexp?
                         (org-inside-LaTeX-fragment-p))
-              (incf match-count)))))
-      (if (minusp to-hide)
+              (cl-incf match-count)))))
+      (if (cl-minusp to-hide)
           (setq to-hide (+ 1 to-hide match-count)))
       (cond
-       ((or (not (plusp match-count))
+       ((or (not (cl-plusp match-count))
             (> to-hide match-count))
         nil)
        (t
@@ -2312,7 +2307,7 @@ the second to last, etc."
                       (or (org-pos-in-regexp (match-beginning 0)
                                              org-bracket-link-regexp 1)
                           (org-inside-LaTeX-fragment-p)))
-              (incf cnt)
+              (cl-incf cnt)
               (if (= cnt to-hide)
                   (org-drill-hide-matched-cloze-text)))))))
       (org-drill--show-latex-fragments)
@@ -2364,7 +2359,7 @@ the value of `org-drill-cloze-text-weight'."
     ;; Behave as hide1cloze
     (org-drill-present-multicloze-hide1))
    ((not (and (integerp org-drill-cloze-text-weight)
-              (plusp org-drill-cloze-text-weight)))
+              (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
            org-drill-cloze-text-weight))
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
@@ -2389,7 +2384,7 @@ the value of `org-drill-cloze-text-weight'."
     ;; Behave as show1cloze
     (org-drill-present-multicloze-show1))
    ((not (and (integerp org-drill-cloze-text-weight)
-              (plusp org-drill-cloze-text-weight)))
+              (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
            org-drill-cloze-text-weight))
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
@@ -2415,7 +2410,7 @@ the value of `org-drill-cloze-text-weight'."
     ;; Behave as show1cloze
     (org-drill-present-multicloze-show1))
    ((not (and (integerp org-drill-cloze-text-weight)
-              (plusp org-drill-cloze-text-weight)))
+              (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
            org-drill-cloze-text-weight))
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
@@ -2514,10 +2509,10 @@ See `org-drill' for more details."
         (let ((presentation-fn
                (cdr (assoc card-type org-drill-card-type-alist))))
           (if (listp presentation-fn)
-              (psetq answer-fn (or (second presentation-fn)
+              (cl-psetq answer-fn (or (cl-second presentation-fn)
                                    'org-drill-present-default-answer)
-                     present-empty-cards (third presentation-fn)
-                     presentation-fn (first presentation-fn)))
+                     present-empty-cards (cl-third presentation-fn)
+                     presentation-fn (cl-first presentation-fn)))
           (let* ((tags (org-get-tags))
                  (rtn
                   (cond
@@ -2598,7 +2593,7 @@ maximum number of items."
 
 
 (defun org-drill-pop-next-pending-entry ()
-  (block org-drill-pop-next-pending-entry
+  (cl-block org-drill-pop-next-pending-entry
     (let ((m nil))
       (while (or (null m)
                  (not (org-drill-entry-p m)))
@@ -2630,7 +2625,7 @@ maximum number of items."
                 (not (org-drill-maximum-item-count-reached-p))
                 (not (org-drill-maximum-duration-reached-p)))
            (cond
-            ((< (random* (+ (length *org-drill-new-entries*)
+            ((< (cl-random (+ (length *org-drill-new-entries*)
                             (length *org-drill-old-mature-entries*)))
                 (length *org-drill-new-entries*))
              (pop-random *org-drill-new-entries*))
@@ -2650,7 +2645,7 @@ maximum number of items."
 'failed' and need to be presented again before the session ends.
 
 RESUMING-P is true if we are resuming a suspended drill session."
-  (block org-drill-entries
+  (cl-block org-drill-entries
     (while (org-drill-entries-pending-p)
       (let ((m (cond
                 ((or (not resuming-p)
@@ -2705,7 +2700,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
 
 (defun org-drill-final-report ()
   (let ((pass-percent
-         (round (* 100 (count-if (lambda (qual)
+         (round (* 100 (cl-count-if (lambda (qual)
                                    (> qual org-drill-failure-quality))
                                  *org-drill-session-qualities*))
                 (max 1 (length *org-drill-session-qualities*))))
@@ -2726,17 +2721,17 @@ Session finished. Press a key to continue..."
            (length *org-drill-done-entries*)
            (format-seconds "%h:%.2m:%.2s"
                            (- (float-time (current-time)) *org-drill-start-time*))
-           (round (* 100 (count 5 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 5 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (count 2 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 2 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (count 4 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 4 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (count 1 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 1 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (count 3 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 3 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (count 0 *org-drill-session-qualities*))
+           (round (* 100 (cl-count 0 *org-drill-session-qualities*))
                   (max 1 (length *org-drill-session-qualities*)))
            pass-percent
            org-drill-failure-quality
@@ -2821,17 +2816,17 @@ all the markers used by Org-Drill will be freed."
 (defun org-drill-order-overdue-entries (overdue-data)
   (let* ((lapsed-days (if org-drill--lapse-very-overdue-entries-p
                           90 most-positive-fixnum))
-         (not-lapsed (remove-if (lambda (a) (> (or (second a) 0) lapsed-days))
+         (not-lapsed (cl-remove-if (lambda (a) (> (or (cl-second a) 0) lapsed-days))
                                 overdue-data))
-         (lapsed (remove-if-not (lambda (a) (> (or (second a) 0)
+         (lapsed (cl-remove-if-not (lambda (a) (> (or (cl-second a) 0)
                                           lapsed-days)) overdue-data)))
     (setq *org-drill-overdue-entries*
           (mapcar 'first
                   (append
                    (sort (shuffle-list not-lapsed)
-                         (lambda (a b) (> (second a) (second b))))
+                         (lambda (a b) (> (cl-second a) (cl-second b))))
                    (sort lapsed
-                         (lambda (a b) (> (third a) (third b)))))))))
+                         (lambda (a b) (> (cl-third a) (cl-third b)))))))))
 
 
 (defun org-drill--entry-lapsed-p ()
@@ -2884,7 +2879,7 @@ STATUS is one of the following values:
               (let* ((card-type (org-entry-get (point) "DRILL_CARD_TYPE" nil))
                     (dat (cdr (assoc card-type org-drill-card-type-alist))))
                 (or (null card-type)
-                    (not (third dat)))))
+                    (not (cl-third dat)))))
          ;; body is empty, and this is not a card type where empty bodies are
          ;; meaningful, so skip it.
          nil)
@@ -2892,7 +2887,7 @@ STATUS is one of the following values:
          :unscheduled)
         ;; ((eql -1 due)
         ;;  :tomorrow)
-        ((minusp due)                   ; scheduled in the future
+        ((cl-minusp due)                   ; scheduled in the future
          :future)
         ;; The rest of the stati all denote 'due' items ==========================
         ((<= (org-drill-entry-last-quality 9999)
@@ -2936,21 +2931,21 @@ STATUS is one of the following values:
       (length *org-drill-young-mature-entries*)
       (length *org-drill-old-mature-entries*)
       (length *org-drill-failed-entries*))
-   (incf cnt))
+   (cl-incf cnt))
   (when (org-drill-entry-p)
     (org-drill-id-get-create-with-warning)
-    (destructuring-bind (status due age)
+    (cl-destructuring-bind (status due age)
         (org-drill-entry-status)
-      (case status
+      (cl-case status
         (:unscheduled
-         (incf *org-drill-dormant-entry-count*))
+         (cl-incf *org-drill-dormant-entry-count*))
         ;; (:tomorrow
-        ;;  (incf *org-drill-dormant-entry-count*)
-        ;;  (incf *org-drill-due-tomorrow-count*))
+        ;;  (cl-incf *org-drill-dormant-entry-count*)
+        ;;  (cl-incf *org-drill-due-tomorrow-count*))
         (:future
-         (incf *org-drill-dormant-entry-count*)
+         (cl-incf *org-drill-dormant-entry-count*)
          (if (eq -1 due)
-             (incf *org-drill-due-tomorrow-count*)))
+             (cl-incf *org-drill-due-tomorrow-count*)))
         (:new
          (push (point-marker) *org-drill-new-entries*))
         (:failed
@@ -3013,7 +3008,7 @@ than starting a new one."
   ;; Check org version. Org 7.9.3f introduced a backwards-incompatible change
   ;; to the arguments accepted by `org-schedule'. At the time of writing there
   ;; are still lots of people using versions of org older than this.
-  (let ((majorv (first (mapcar 'string-to-number (split-string (org-release) "[.]")))))
+  (let ((majorv (cl-first (mapcar 'string-to-number (split-string (org-release) "[.]")))))
     (if (and (< majorv 8)
              (not (string-match-p "universal prefix argument" (documentation 'org-schedule))))
         (read-char-exclusive
@@ -3023,7 +3018,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
   (let ((end-pos nil)
         (overdue-data nil)
         (cnt 0))
-    (block org-drill
+    (cl-block org-drill
       (unless resume-p
         (org-drill-free-markers t)
         (setq *org-drill-current-item* nil
@@ -3040,7 +3035,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               *org-drill-again-entries* nil)
         (setq *org-drill-session-qualities* nil)
         (setq *org-drill-start-time* (float-time (current-time))))
-      (setq *random-state* (make-random-state t)) ; reseed RNG
+      (setq *random-state* (cl-make-random-state t)) ; reseed RNG
       (unwind-protect
           (save-excursion
             (unless resume-p
@@ -3136,7 +3131,7 @@ scan will be performed."
   (interactive)
   (setq *org-drill-cram-mode* nil)
   (cond
-   ((plusp (org-drill-pending-entry-count))
+   ((cl-plusp (org-drill-pending-entry-count))
     (org-drill-free-markers *org-drill-done-entries*)
     (if (markerp *org-drill-current-item*)
         (free-marker *org-drill-current-item*))
@@ -3156,7 +3151,7 @@ exiting them with the `edit' or `quit' options."
   (cond
    ((org-drill-entries-pending-p)
     (org-drill nil nil t))
-   ((and (plusp (org-drill-pending-entry-count))
+   ((and (cl-plusp (org-drill-pending-entry-count))
          ;; Current drill session is finished, but there are still
          ;; more items which need to be reviewed.
          (y-or-n-p (format
@@ -3210,7 +3205,7 @@ values as `org-drill-scope'."
   (setq-local org-drill-cloze-keywords (org-drill--compute-cloze-keywords))
   (when org-drill-use-visible-cloze-face-p
     (add-to-list 'org-font-lock-extra-keywords
-                 (first org-drill-cloze-keywords))))
+                 (cl-first org-drill-cloze-keywords))))
 
 
 ;; Can't add to org-mode-hook, because local variables won't have been loaded
@@ -3243,7 +3238,7 @@ values as `org-drill-scope'."
 (defun org-drill-copy-entry-to-other-buffer (dest &optional path)
   "Copy the subtree at point to the buffer DEST. The copy will receive
 the tag 'imported'."
-  (block org-drill-copy-entry-to-other-buffer
+  (cl-block org-drill-copy-entry-to-other-buffer
     (save-excursion
       (let ((src (current-buffer))
             (m nil))
@@ -3336,7 +3331,7 @@ copy them across."
              ;; scheduling data, then go to the matching location in dest
              ;; and write the data.
              (let ((marker (gethash id *org-drill-dest-id-table*)))
-               (destructuring-bind (last-interval repetitions failures
+               (cl-destructuring-bind (last-interval repetitions failures
                                                   total-repeats meanq ease)
                    (org-drill-get-item-data)
                  (setq last-reviewed (org-entry-get (point) "DRILL_LAST_REVIEWED")
@@ -3435,11 +3430,11 @@ the name of the tense.")
           translation (car (read-from-string translation)))
     (setq highlight-face
           (list :foreground
-                (or (second (assoc-string tense org-drill-verb-tense-alist t))
+                (or (cl-second (assoc-string tense org-drill-verb-tense-alist t))
                     "hotpink")
                 :background
                 (or
-                 (second (assoc-string mood org-drill-verb-tense-alist t))
+                 (cl-second (assoc-string mood org-drill-verb-tense-alist t))
                  "black")))
     (setq infinitive (propertize infinitive 'face highlight-face))
     (setq translation (propertize translation 'face highlight-face))
@@ -3459,11 +3454,11 @@ the name of the tense.")
                (format "%s tense" tense))
               (mood
                (format "%s mood" mood)))))
-    (destructuring-bind (infinitive inf-hint translation tense mood)
+    (cl-destructuring-bind (infinitive inf-hint translation tense mood)
         (org-drill-get-verb-conjugation-info)
       (org-drill-present-card-using-text
        (cond
-        ((zerop (random* 2))
+        ((zerop (cl-random 2))
          (format "\nTranslate the verb\n\n%s\n\nand conjugate for the %s.\n\n"
                  infinitive (tense-and-mood-to-string tense mood)))
 
@@ -3479,7 +3474,7 @@ and conjugate for the %s.\n\n"
   "Show the answer for a drill item whose card type is 'conjugate'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
-  (destructuring-bind (infinitive inf-hint translation tense mood)
+  (cl-destructuring-bind (infinitive inf-hint translation tense mood)
       (org-drill-get-verb-conjugation-info)
     (with-replaced-entry-heading
      (format "%s of %s ==> %s\n\n"
@@ -3534,7 +3529,7 @@ returns its return value."
           translation (car (read-from-string translation)))
     (setq highlight-face
           (list :foreground
-                (or (second (assoc-string noun-gender
+                (or (cl-second (assoc-string noun-gender
                                           org-drill-noun-gender-alist t))
                     "red")))
     (setq noun (propertize noun 'face highlight-face))
@@ -3544,7 +3539,7 @@ returns its return value."
 
 (defun org-drill-present-noun-declension ()
   "Present a drill entry whose card type is 'decline_noun'."
-  (destructuring-bind (noun noun-root noun-gender noun-hint translation)
+  (cl-destructuring-bind (noun noun-root noun-gender noun-hint translation)
       (org-drill-get-noun-info)
     (let* ((props (org-entry-properties (point)))
            (definite
@@ -3563,7 +3558,7 @@ returns its return value."
              (t nil))))
       (org-drill-present-card-using-text
        (cond
-        ((zerop (random* 2))
+        ((zerop (cl-random 2))
          (format "\nTranslate the noun\n\n%s (%s)\n\nand list its declensions%s.\n\n"
                  noun noun-gender
                  (if (or plural definite)
@@ -3583,7 +3578,7 @@ and list its declensions%s.\n\n"
   "Show the answer for a drill item whose card type is 'decline_noun'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
-  (destructuring-bind (noun noun-root noun-gender noun-hint translation)
+  (cl-destructuring-bind (noun noun-root noun-gender noun-hint translation)
       (org-drill-get-noun-info)
     (with-replaced-entry-heading
      (format "Declensions of %s (%s) ==> %s\n\n"
@@ -3619,9 +3614,9 @@ returns its return value."
           (psetf num-min num-max
                  num-max num-min))
       (setq drilled-number
-            (+ num-min (random* (abs (1+ (- num-max num-min))))))
+            (+ num-min (cl-random (abs (1+ (- num-max num-min))))))
       (setq drilled-number-direction
-            (if (zerop (random* 2)) 'from-english 'to-english))
+            (if (zerop (cl-random 2)) 'from-english 'to-english))
       (cond
        ((eql 'to-english drilled-number-direction)
         (org-drill-present-card-using-text
@@ -3674,7 +3669,7 @@ returns its return value."
     (with-hidden-comments
      (with-hidden-cloze-hints
       (with-hidden-cloze-text
-       (case (random* 6)
+       (cl-case (cl-random 6)
          (0
           (org-drill-hide-all-subheadings-except '("Infinitive"))
           (setq prompt
@@ -3781,7 +3776,7 @@ Returns a list of strings."
   ;; org-drill-again uses org-drill-pending-entry-count to decide
   ;; whether it needs to scan or not.
   (let ((pending (org-drill-pending-entry-count)))
-    (unless (plusp pending)
+    (unless (cl-plusp pending)
       (let ((warned-about-id-creation nil)
             (cnt 0)
             (overdue-data nil)
@@ -3896,7 +3891,7 @@ shuffling is done in place."
    (+ (length org-drill-leitner-unboxed-entries)
       (length org-drill-leitner-boxed-entries))
    ;; This variable is dynamically scoped in!
-   (incf cnt))
+   (cl-incf cnt))
   (when (org-drill-entry-p)
     (org-drill-id-get-create-with-warning)
     (let ((leitner-box (org-entry-get (point) "DRILL_LEITNER_BOX" nil)))
@@ -3958,7 +3953,7 @@ shuffling is done in place."
          ((stringp input)
           (setq ch (elt input 0)))
          ((and (vectorp input) (symbolp (elt input 0)))
-          (case (elt input 0)
+          (cl-case (elt input 0)
             (up (ignore-errors (forward-line -1)))
             (down (ignore-errors (forward-line 1)))
             (left (ignore-errors (backward-char)))
@@ -3967,7 +3962,7 @@ shuffling is done in place."
             (next (ignore-errors (scroll-up)))))  ; pgdn
          ((and (vectorp input) (listp (elt input 0))
                (eventp (elt input 0)))
-          (case (car (elt input 0))
+          (cl-case (car (elt input 0))
             (wheel-up (ignore-errors (mwheel-scroll (elt input 0))))
             (wheel-down (ignore-errors (mwheel-scroll (elt input 0)))))))
         (if (eql ch org-drill--tags-key)
@@ -4011,7 +4006,7 @@ shuffling is done in place."
     (org-toggle-tag "leitner" 'off)
     (when org-drill-leitner-promote-to-drill-p
       (org-toggle-tag "drill" 'on))
-    (incf org-drill-leitner-completed))
+    (cl-incf org-drill-leitner-completed))
   (org-set-property
    "DRILL_LEITNER_BOX"
    (format

@@ -3,3 +3,5 @@ org-drill.html
 /*.elc
 /makefile-local
 /robot/Makefile
+/robot/main-test-copy.org
+/robot/failure.txt

@@ -36,6 +36,7 @@ docker-test:
 	$(MAKE) test-cp DOCKER_TAG=25.3
 
 robot-test:
+	$(CASK) clean-elc
 	$(EMACS_ENV) ./robot/robot-test.sh
 
 .PHONY: test
