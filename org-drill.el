@@ -596,7 +596,8 @@ to preserve the formatting in a displayed table, for example."
 
 (defvar-local org-drill-response-associated-buffer nil)
 
-(defvar *org-drill-session-qualities* nil)
+(cl-defstruct org-drill-session (qualities))
+
 (defvar *org-drill-start-time* 0)
 (defvar *org-drill-new-entries* nil)
 (defvar *org-drill-dormant-entry-count* 0)
@@ -1446,7 +1447,7 @@ of QUALITY."
           (read-key-sequence prompt))
       (set-input-method old-input-method))))
 
-(defun org-drill-reschedule ()
+(defun org-drill-reschedule (session)
   "Returns quality rating (0-5), or nil if the user quit."
   (let ((ch nil)
         (input nil)
@@ -1513,7 +1514,7 @@ of QUALITY."
             (let ((quality (if (org-drill--entry-lapsed-p) 2 quality)))
               (org-drill-smart-reschedule quality
                                           (nth quality next-review-dates))))
-          (push quality *org-drill-session-qualities*)
+          (push quality (org-drill-session-qualities session))
           (cond
            ((<= quality org-drill-failure-quality)
             (when org-drill-leech-failure-threshold
@@ -1756,6 +1757,7 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (defun org-drill-response-rtn ()
   (interactive)
+  (message "response-rtn")
   (setq drill-typed-answer (buffer-string)
         exit-kind t)
   (org-drill-response-complete))
@@ -2467,7 +2469,7 @@ If ANSWER is supplied, set the global variable `drill-answer' to its value."
       (org-drill-hide-subheadings-if 'org-drill-entry-p)))))
 
 
-(defun org-drill-entry ()
+(defun org-drill-entry (session)
   "Present the current topic for interactive review, as in `org-drill'.
 Review will occur regardless of whether the topic is due for review or whether
 it meets the definition of a 'review topic' used by `org-drill'.
@@ -2478,7 +2480,7 @@ the latter option leaves the drill session suspended; it can be resumed
 later using `org-drill-resume'.
 
 See `org-drill' for more details."
-  (org-drill-entry-f #'org-drill-reschedule))
+  (org-drill-entry-f (apply-partially #'org-drill-reschedule session)))
 
 (defun org-drill-card-tag-caller (item tag)
   (funcall
@@ -2517,7 +2519,7 @@ See `org-drill' for more details."
                  (rtn
                   (cond
                    ((null presentation-fn)
-                    (message "%s:%d: Unrecognised card type '%s', skipping..."
+                   (message "%s:%d: Unrecognised card type '%s', skipping..."
                              (buffer-name) (point) card-type)
                     (sit-for 0.5)
                     'skip)
@@ -2640,7 +2642,7 @@ maximum number of items."
       m)))
 
 
-(defun org-drill-entries (&optional resuming-p)
+(defun org-drill-entries (session &optional resuming-p)
   "Returns nil, t, or a list of markers representing entries that were
 'failed' and need to be presented again before the session ends.
 
@@ -2673,7 +2675,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
             nil)
            (t
             (org-show-entry)
-            (setq result (org-drill-entry))
+            (setq result (org-drill-entry session))
             (cond
              ((null result)
               (message "Quit")
@@ -2698,14 +2700,15 @@ RESUMING-P is true if we are resuming a suspended drill session."
 
 
 
-(defun org-drill-final-report ()
-  (let ((pass-percent
-         (round (* 100 (cl-count-if (lambda (qual)
-                                   (> qual org-drill-failure-quality))
-                                 *org-drill-session-qualities*))
-                (max 1 (length *org-drill-session-qualities*))))
-        (prompt nil)
-        (max-mini-window-height 0.6))
+(defun org-drill-final-report (session)
+  (let* ((qualities (org-drill-session-qualities session))
+         (pass-percent
+          (round (* 100 (cl-count-if (lambda (qual)
+                                       (> qual org-drill-failure-quality))
+                                     qualities))
+                 (max 1 (length qualities))))
+         (prompt nil)
+         (max-mini-window-height 0.6))
     (setq prompt
           (format
            "%d items reviewed. Session duration %s.
@@ -2721,18 +2724,18 @@ Session finished. Press a key to continue..."
            (length *org-drill-done-entries*)
            (format-seconds "%h:%.2m:%.2s"
                            (- (float-time (current-time)) *org-drill-start-time*))
-           (round (* 100 (cl-count 5 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (cl-count 2 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (cl-count 4 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (cl-count 1 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (cl-count 3 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
-           (round (* 100 (cl-count 0 *org-drill-session-qualities*))
-                  (max 1 (length *org-drill-session-qualities*)))
+           (round (* 100 (cl-count 5 qualities))
+                  (max 1 (length qualities)))
+           (round (* 100 (cl-count 2 qualities))
+                  (max 1 (length qualities)))
+           (round (* 100 (cl-count 4 qualities))
+                  (max 1 (length qualities)))
+           (round (* 100 (cl-count 1 qualities))
+                  (max 1 (length qualities)))
+           (round (* 100 (cl-count 3 qualities))
+                  (max 1 (length qualities)))
+           (round (* 100 (cl-count 0 qualities))
+                  (max 1 (length qualities)))
            pass-percent
            org-drill-failure-quality
            (org-drill-pending-entry-count)
@@ -2767,7 +2770,7 @@ Session finished. Press a key to continue..."
       (sit-for 0.5))
     (read-char-exclusive)
 
-    (if (and *org-drill-session-qualities*
+    (if (and qualities
              (< pass-percent (- 100 org-drill-forgetting-index)))
         (read-char-exclusive
          (format
@@ -3015,7 +3018,8 @@ than starting a new one."
          (format "Warning: org-drill requires org mode 7.9.3f or newer. Scheduling of failed cards will not
 work correctly with older versions of org mode. Your org mode version (%s) appears to be older than
 7.9.3f. Please consider installing a more recent version of org mode." (org-release)))))
-  (let ((end-pos nil)
+  (let ((session (make-org-drill-session))
+        (end-pos nil)
         (overdue-data nil)
         (cnt 0))
     (cl-block org-drill
@@ -3033,7 +3037,6 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               *org-drill-old-mature-entries* nil
               *org-drill-failed-entries* nil
               *org-drill-again-entries* nil)
-        (setq *org-drill-session-qualities* nil)
         (setq *org-drill-start-time* (float-time (current-time))))
       (setq *random-state* (cl-make-random-state t)) ; reseed RNG
       (unwind-protect
@@ -3057,7 +3060,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
                    (null *org-drill-old-mature-entries*))
               (message "I did not find any pending drill items."))
              (t
-              (org-drill-entries resume-p)
+              (org-drill-entries session resume-p)
               (message "Drill session finished!")
               (sit-for 1)
               (message nil)
@@ -3078,7 +3081,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
          (if keystr (format "\nYou can run this command by pressing %s." keystr)
            ""))))
      (t
-      (org-drill-final-report)
+      (org-drill-final-report session)
       (if (eql 'sm5 org-drill-spaced-repetition-algorithm)
           (org-drill-save-optimal-factor-matrix))
       (if org-drill-save-buffers-after-drill-sessions-p
