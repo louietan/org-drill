@@ -629,18 +629,19 @@ interval was greater than ORG-DRILL-DAYS-BEFORE-OLD days.")
    (failed-entries :initform nil)
    (again-entries :initform nil)
    (done-entries :initform nil)
-
-   )
+   (current-item
+    :initform nil
+    :documentation "Set to the marker for the item currently being tested.")
+   (cram-mode
+    :initform nil
+    :documementation "Are we in 'cram mode', where all items are considered due
+for review unless they were already reviewed in the recent past?"
+    ))
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
 (defvar org-drill-last-session nil)
 
-(defvar *org-drill-current-item* nil
-  "Set to the marker for the item currently being tested.")
-(defvar *org-drill-cram-mode* nil
-  "Are we in 'cram mode', where all items are considered due
-for review unless they were already reviewed in the recent past?")
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
     "DRILL_TOTAL_REPEATS" "DRILL_FAILURE_COUNT" "DRILL_AVERAGE_QUALITY"
@@ -901,7 +902,7 @@ drill entry."
 - A negative integer - item is scheduled that many days in the future.
 - A positive integer - item is scheduled that many days in the past."
   (cond
-   (*org-drill-cram-mode*
+   ((oref session cram-mode)
     (let ((hours (org-drill-hours-since-last-review)))
       (and (org-drill-entry-p)
            (or (null hours)
@@ -1529,7 +1530,7 @@ of QUALITY."
      ((and (>= ch ?0) (<= ch ?5))
       (let ((quality (- ch ?0))
             (failures (org-drill-entry-failure-count)))
-        (unless *org-drill-cram-mode*
+        (unless (oref session cram-mode)
           (save-excursion
             (let ((quality (if (org-drill--entry-lapsed-p) 2 quality)))
               (org-drill-smart-reschedule quality
@@ -1620,7 +1621,7 @@ the current topic."
              (char-to-string
               (cond
                ((eql status :failed) ?F)
-               (*org-drill-cram-mode* ?C)
+               ((oref session cram-mode) ?C)
                (t
                 (cl-case status
                   (:new ?N) (:young ?Y) (:old ?o) (:overdue ?!)
@@ -2570,7 +2571,7 @@ See `org-drill' for more details."
 
 (defun org-drill-entries-pending-p (session)
   (or (oref session again-entries)
-      *org-drill-current-item*
+      (oref session current-item)
       (and (not (org-drill-maximum-item-count-reached-p))
            (not (org-drill-maximum-duration-reached-p session))
            (or (oref session new-entries)
@@ -2581,7 +2582,7 @@ See `org-drill' for more details."
                (oref session again-entries)))))
 
 (defun org-drill-pending-entry-count (session)
-  (+ (if (markerp *org-drill-current-item*) 1 0)
+  (+ (if (markerp (oref session current-item)) 1 0)
      (length (oref session new-entries))
      (length (oref session failed-entries))
      (length (oref session young-mature-entries))
@@ -2594,7 +2595,7 @@ See `org-drill' for more details."
   "Returns true if the current drill session has continued past its
 maximum duration."
   (and org-drill-maximum-duration
-       (not *org-drill-cram-mode*)
+       (not (oref session cram-mode))
        (oref session start-time)
        (> (- (float-time (current-time))
              (oref session start-time))
@@ -2605,7 +2606,7 @@ maximum duration."
   "Returns true if the current drill session has reached the
 maximum number of items."
   (and org-drill-maximum-items-per-session
-       (not *org-drill-cram-mode*)
+       (not (oref session cram-mode))
        (>= (if org-drill-item-count-includes-failed-items-p
                (+ (length (oref session done-entries))
                   (length (oref session again-entries)))
@@ -2670,13 +2671,13 @@ RESUMING-P is true if we are resuming a suspended drill session."
     (while (org-drill-entries-pending-p session)
       (let ((m (cond
                 ((or (not resuming-p)
-                     (null *org-drill-current-item*)
-                     (not (org-drill-entry-p *org-drill-current-item*)))
+                     (null (oref session current-item))
+                     (not (org-drill-entry-p (oref session current-item))))
                  (org-drill-pop-next-pending-entry session))
                 (t                      ; resuming a suspended session.
                  (setq resuming-p nil)
-                 *org-drill-current-item*))))
-        (setq *org-drill-current-item* m)
+                 (oref session current-item)))))
+        (setf (oref session current-item) m)
         (unless m
           (error "Unexpectedly ran out of pending drill items"))
         (save-excursion
@@ -2704,7 +2705,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
               (setq end-pos (point-marker))
               (cl-return-from org-drill-entries nil))
              ((eql result 'skip)
-              (setq *org-drill-current-item* nil)
+              (setf (oref session current-item) nil)
               nil)                      ; skip this item
              (t
               (cond
@@ -2715,7 +2716,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
                 (push-end m (oref session again-entries)))
                (t
                 (push m (oref session done-entries))))
-              (setq *org-drill-current-item* nil))))))))))
+              (setf (oref session current-item) nil))))))))))
 
 
 
@@ -3046,7 +3047,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
     (cl-block org-drill
       (unless resume-p
         (org-drill-free-markers session t)
-        (setf *org-drill-current-item* nil
+        (setf (oref session current-item) nil
               (oref session done-entries) nil
               (oref session dormant-entry-count) 0
               (oref session due-entry-count) 0
@@ -3074,7 +3075,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
             (setf (oref session due-entry-count)
                   (org-drill-pending-entry-count session))
             (cond
-             ((and (null *org-drill-current-item*)
+             ((and (null (oref session current-item))
                    (null (oref session new-entries))
                    (null (oref session failed-entries))
                    (null (oref session overdue-entries))
@@ -3089,7 +3090,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               )))
         (progn
           (unless end-pos
-            (setq *org-drill-cram-mode* nil)
+            (setf (oref session cram-mode) nil)
             (org-drill-free-markers session (oref session done-entries))))))
     (cond
      (end-pos
@@ -3124,7 +3125,7 @@ all drill items are considered to be due for review, unless they
 have been reviewed within the last `org-drill-cram-hours'
 hours."
   (interactive)
-  (setq *org-drill-cram-mode* t)
+  (setq (oref session cram-mode) t)
   (org-drill scope drill-match))
 
 (defun org-drill-cram-tree ()
@@ -3155,15 +3156,15 @@ unreviewed items. If there are no leftover items in memory, a full
 scan will be performed."
   (interactive)
   (let ((session org-drill-last-session))
-    (setq *org-drill-cram-mode* nil)
+    (setf (oref session cram-mode) nil)
     (cond
      ((cl-plusp (org-drill-pending-entry-count session))
       (org-drill-free-markers session (oref session done-entries))
-      (if (markerp *org-drill-current-item*)
-          (free-marker *org-drill-current-item*))
+      (if (markerp (oref session current-item))
+          (free-marker (oref session current-item)))
       (setf (oref session start-time) (float-time (current-time)))
       (setf (oref session done-entries) nil
-            *org-drill-current-item* nil)
+            (oref session current-item) nil)
       (org-drill scope drill-match t))
      (t
       (org-drill scope drill-match)))))
