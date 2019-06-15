@@ -640,7 +640,7 @@ for review unless they were already reviewed in the recent past?"
    (warned-about-id-creation
     :initform nil
     :documentation "Have we warned the user about ID creation this session?")
-
+   (overdue-data :initform nil)
    )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
@@ -2840,13 +2840,15 @@ all the markers used by Org-Drill will be freed."
 ;;; if age > lapse threshold (default 90), sort by age (oldest first)
 ;;; if age < lapse threshold, sort by due (biggest first)
 
-(defun org-drill-order-overdue-entries (session overdue-data)
+(defun org-drill-order-overdue-entries (session)
   (let* ((lapsed-days (if org-drill--lapse-very-overdue-entries-p
                           90 most-positive-fixnum))
          (not-lapsed (cl-remove-if (lambda (a) (> (or (cl-second a) 0) lapsed-days))
-                                overdue-data))
-         (lapsed (cl-remove-if-not (lambda (a) (> (or (cl-second a) 0)
-                                          lapsed-days)) overdue-data)))
+                                   (oref session overdue-data)))
+         (lapsed (cl-remove-if-not
+                  (lambda (a) (> (or (cl-second a) 0)
+                                 lapsed-days))
+                  (oref session overdue-data))))
     (setf (oref session overdue-entries)
           (mapcar 'first
                   (append
@@ -2960,7 +2962,7 @@ STATUS is one of the following values:
       (length (oref session failed-entries)))
    (cl-incf cnt))
   (when (org-drill-entry-p)
-    (org-drill-id-get-create-with-warning session )
+    (org-drill-id-get-create-with-warning session)
     (cl-destructuring-bind (status due age)
         (org-drill-entry-status)
       (cl-case status
@@ -2980,7 +2982,8 @@ STATUS is one of the following values:
         (:young
          (push (point-marker) (oref session young-mature-entries)))
         (:overdue
-         (push (list (point-marker) due age) overdue-data))
+         ;; dynamic
+         (push (list (point-marker) due age) (oref session overdue-data)))
         (:old
          (push (point-marker) (oref session old-mature-entries)))
         ))))
@@ -3047,7 +3050,6 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
              org-drill-last-session
            (org-drill-session)))
         (end-pos nil)
-        (overdue-data nil)
         (cnt 0))
     (cl-block org-drill
       (unless resume-p
@@ -3072,7 +3074,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
                 (org-map-drill-entries
                  (apply-partially #'org-map-drill-entry-function session)
                  scope drill-match)
-                (org-drill-order-overdue-entries session overdue-data)
+                (org-drill-order-overdue-entries session)
                 (setf (oref session overdue-entry-count)
                       (length (oref session overdue-entries)))))
             (setf (oref session due-entry-count)
@@ -3810,7 +3812,6 @@ Returns a list of strings."
          (pending (org-drill-pending-entry-count session)))
     (unless (cl-plusp pending)
       (let ((cnt 0)
-            (overdue-data nil)
             (end-pos nil))
         (org-map-drill-entries
          (apply-partially 'org-map-drill-entry-function session)
