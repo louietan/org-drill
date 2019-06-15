@@ -603,17 +603,18 @@ to preserve the formatting in a displayed table, for example."
 
 (defclass org-drill-session ()
   ((qualities :initform nil)
-   (start-time :initform 0
+   (start-time :initform 0.0
                :documentation "Time at which the session started"
-               )
+               :type float)
    (new-entries :initform nil)
+   (dormant-entry-count :initform 0)
    )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session."  )
 
 (defvar org-drill-last-session nil)
 
-(defvar *org-drill-dormant-entry-count* 0)
+
 (defvar *org-drill-due-entry-count* 0)
 (defvar *org-drill-overdue-entry-count* 0)
 (defvar *org-drill-due-tomorrow-count* 0)
@@ -2754,7 +2755,7 @@ Session finished. Press a key to continue..."
            org-drill-failure-quality
            (org-drill-pending-entry-count session)
            (+ (org-drill-pending-entry-count session)
-              *org-drill-dormant-entry-count*)
+              (oref session dormant-entry-count))
            (propertize
             (format "%d failed"
                     (+ (length *org-drill-failed-entries*)
@@ -2800,7 +2801,7 @@ order to make items appear more frequently over time."
           (- 100 pass-percent)
           *org-drill-overdue-entry-count*
           (round (* 100 *org-drill-overdue-entry-count*)
-                 (+ *org-drill-dormant-entry-count*
+                 (+ (oref session dormant-entry-count)
                     *org-drill-due-entry-count*)))
          ))))
 
@@ -2954,12 +2955,12 @@ STATUS is one of the following values:
         (org-drill-entry-status)
       (cl-case status
         (:unscheduled
-         (cl-incf *org-drill-dormant-entry-count*))
+         (cl-incf (oref session dormant-entry-count)))
         ;; (:tomorrow
         ;;  (cl-incf *org-drill-dormant-entry-count*)
         ;;  (cl-incf *org-drill-due-tomorrow-count*))
         (:future
-         (cl-incf *org-drill-dormant-entry-count*)
+         (cl-incf (oref session dormant-entry-count))
          (if (eq -1 due)
              (cl-incf *org-drill-due-tomorrow-count*)))
         (:new
@@ -3043,7 +3044,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
         (org-drill-free-markers session t)
         (setf *org-drill-current-item* nil
               *org-drill-done-entries* nil
-              *org-drill-dormant-entry-count* 0
+              (oref session dormant-entry-count) 0
               *org-drill-due-entry-count* 0
               *org-drill-due-tomorrow-count* 0
               *org-drill-overdue-entry-count* 0
