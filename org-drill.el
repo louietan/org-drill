@@ -1,4 +1,4 @@
-;;; org-drill.el --- Self-testing using spaced repetition -*- coding: utf-8-unix -*-
+;;; org-drill.el --- Self-testing using spaced repetition -*- lexical-binding: t -*-
 
 ;;; Header:
 
@@ -641,6 +641,7 @@ for review unless they were already reviewed in the recent past?"
     :initform nil
     :documentation "Have we warned the user about ID creation this session?")
    (overdue-data :initform nil)
+   (cnt :initform 0)
    )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
@@ -897,7 +898,7 @@ drill entry."
 ;;                         (time-to-days item-time))))))))))
 
 
-(defun org-drill-entry-days-overdue ()
+(defun org-drill-entry-days-overdue (session)
   "Returns:
 - NIL if the item is not to be regarded as scheduled for review at all.
   This is the case if it is not a drill item, or if it is a leech item
@@ -944,8 +945,8 @@ from the entry at point."
 
 
 
-(defun org-drill-entry-due-p ()
-  (let ((due (org-drill-entry-days-overdue)))
+(defun org-drill-entry-due-p (session)
+  (let ((due (org-drill-entry-days-overdue session)))
     (and (not (null due))
          (not (cl-minusp due)))))
 
@@ -1063,7 +1064,7 @@ in the matrix."
      (learn-str
       (let ((learn-data (or (and learn-str
                                  (read learn-str))
-                            (cp-copy-list initial-repetition-state))))
+                            (cl-copy-list initial-repetition-state))))
         (list (nth 0 learn-data)        ; last interval
               (nth 1 learn-data)        ; repetitions
               (org-drill-entry-failure-count)
@@ -1617,7 +1618,7 @@ the current topic."
            (not (member drill-heading heading-list))))))
 
 (defun org-drill--make-minibuffer-prompt (session prompt)
-  (let ((status (cl-first (org-drill-entry-status)))
+  (let ((status (cl-first (org-drill-entry-status session)))
         (mature-entry-count (+ (length (oref session young-mature-entries))
                                (length (oref session old-mature-entries))
                                (length (oref session overdue-entries)))))
@@ -1658,7 +1659,7 @@ the current topic."
                                 "have never reviewed."))
             prompt)))
 
-(cl-defun org-drill-presentation-prompt  (&key prompt
+(cl-defun org-drill-presentation-prompt  (session &key prompt
                                                returns
                                                (start-time (current-time)))
   "Create a card prompt with a timer and user-specified menu.
@@ -1678,10 +1679,10 @@ START-TIME: The time the card started to be displayed.  This
             be convenient to override this default.
 "
   (if org-drill-presentation-prompt-with-typing
-    (org-drill-presentation-prompt-in-buffer)
-    (org-drill-presentation-prompt-in-mini-buffer)))
+    (org-drill-presentation-prompt-in-buffer session)
+    (org-drill-presentation-prompt-in-mini-buffer session)))
 
-(cl-defun org-drill-presentation-prompt-in-mini-buffer (&key prompt
+(cl-defun org-drill-presentation-prompt-in-mini-buffer (session &key prompt
                                                           returns
                                                           (start-time (current-time)))
   "Create a card prompt with a timer and user-specified menu.
@@ -1819,7 +1820,7 @@ Consider reformulating the item to make it easier to remember.\n"
       (set-input-method local-current-input-method)
       (current-buffer))))
 
-(defun org-drill-presentation-prompt-in-buffer ()
+(defun org-drill-presentation-prompt-in-buffer (session)
   (let* ((item-start-time (current-time))
          (input nil)
          (ch nil)
@@ -2120,7 +2121,7 @@ Note: does not actually alter the item."
 ;; recall, nil if they chose to quit.
 
 
-(defun org-drill-present-simple-card ()
+(defun org-drill-present-simple-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
     (with-hidden-cloze-text
@@ -2129,7 +2130,7 @@ Note: does not actually alter the item."
      (ignore-errors
        (org-display-inline-images t))
      (org-cycle-hide-drawers 'all)
-     (prog1 (org-drill-presentation-prompt)
+     (prog1 (org-drill-presentation-prompt session)
        (org-drill-hide-subheadings-if 'org-drill-entry-p))))))
 
 
@@ -2173,7 +2174,7 @@ Note: does not actually alter the item."
     (org-preview-latex-fragment '(4))))
 
 
-(defun org-drill-present-two-sided-card ()
+(defun org-drill-present-two-sided-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
     (with-hidden-cloze-text
@@ -2187,7 +2188,7 @@ Note: does not actually alter the item."
        (ignore-errors
          (org-display-inline-images t))
        (org-cycle-hide-drawers 'all)
-       (prog1 (org-drill-presentation-prompt)
+       (prog1 (org-drill-presentation-prompt session)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
 
@@ -2205,11 +2206,12 @@ Note: does not actually alter the item."
        (ignore-errors
          (org-display-inline-images t))
        (org-cycle-hide-drawers 'all)
-       (prog1 (org-drill-presentation-prompt)
+       (prog1 (org-drill-presentation-prompt session)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
 
-(defun org-drill-present-multicloze-hide-n (number-to-hide
+(defun org-drill-present-multicloze-hide-n (session
+                                            number-to-hide
                                             &optional
                                             force-show-first
                                             force-show-last
@@ -2287,7 +2289,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
       (ignore-errors
         (org-display-inline-images t))
       (org-cycle-hide-drawers 'all)
-      (prog1 (org-drill-presentation-prompt)
+      (prog1 (org-drill-presentation-prompt session)
         (org-drill-hide-subheadings-if 'org-drill-entry-p)
         (org-drill-unhide-clozed-text))))))
 
@@ -2341,7 +2343,7 @@ the second to last, etc."
       (ignore-errors
         (org-display-inline-images t))
       (org-cycle-hide-drawers 'all)
-      (prog1 (org-drill-presentation-prompt)
+      (prog1 (org-drill-presentation-prompt session)
         (org-drill-hide-subheadings-if 'org-drill-entry-p)
         (org-drill-unhide-clozed-text))))))
 
@@ -2462,7 +2464,7 @@ pieces rather than one."
   (org-drill-present-multicloze-hide-n -2))
 
 
-(defun org-drill-present-card-using-text (question &optional answer)
+(defun org-drill-present-card-using-text (session question &optional answer)
   "Present the string QUESTION as the only visible content of the card.
 If ANSWER is supplied, set the global variable `drill-answer' to its value."
   (if answer (setq drill-answer answer))
@@ -2473,11 +2475,11 @@ If ANSWER is supplied, set the global variable `drill-answer' to its value."
     (org-cycle-hide-drawers 'all)
     (ignore-errors
       (org-display-inline-images t))
-    (prog1 (org-drill-presentation-prompt)
+    (prog1 (org-drill-presentation-prompt session)
       (org-drill-hide-subheadings-if 'org-drill-entry-p)))))
 
 
-(defun org-drill-present-card-using-multiple-overlays (replacements &optional answer)
+(defun org-drill-present-card-using-multiple-overlays (session replacements &optional answer)
   "TEXTS is a list of valid values for the 'display' text property.
 Present these overlays, in sequence, as the only
 visible content of the card.
@@ -2490,7 +2492,7 @@ If ANSWER is supplied, set the global variable `drill-answer' to its value."
     (org-cycle-hide-drawers 'all)
     (ignore-errors
       (org-display-inline-images t))
-    (prog1 (org-drill-presentation-prompt)
+    (prog1 (org-drill-presentation-prompt session)
       (org-drill-hide-subheadings-if 'org-drill-entry-p)))))
 
 
@@ -2505,14 +2507,14 @@ the latter option leaves the drill session suspended; it can be resumed
 later using `org-drill-resume'.
 
 See `org-drill' for more details."
-  (org-drill-entry-f (apply-partially #'org-drill-reschedule session)))
+  (org-drill-entry-f session (apply-partially #'org-drill-reschedule session)))
 
 (defun org-drill-card-tag-caller (item tag)
   (funcall
    (or (nth item (assoc tag org-drill-card-tags-alist))
        'ignore)))
 
-(defun org-drill-entry-f (complete-func)
+(defun org-drill-entry-f (session complete-func)
   (interactive)
   (org-drill-goto-drill-entry-heading)
   ;;(unless (org-part-of-drill-entry-p)
@@ -2552,7 +2554,7 @@ See `org-drill' for more details."
                     (mapc
                      (apply-partially 'org-drill-card-tag-caller 1)
                      (org-get-tags))
-                    (setq cont (funcall presentation-fn))
+                    (setq cont (funcall presentation-fn session))
                     (cond
                      ((not cont)
                       (message "Quit")
@@ -2577,7 +2579,7 @@ See `org-drill' for more details."
 (defun org-drill-entries-pending-p (session)
   (or (oref session again-entries)
       (oref session current-item)
-      (and (not (org-drill-maximum-item-count-reached-p))
+      (and (not (org-drill-maximum-item-count-reached-p session))
            (not (org-drill-maximum-duration-reached-p session))
            (or (oref session new-entries)
                (oref session failed-entries)
@@ -2607,7 +2609,7 @@ maximum duration."
           (* org-drill-maximum-duration 60))))
 
 
-(defun org-drill-maximum-item-count-reached-p ()
+(defun org-drill-maximum-item-count-reached-p (session)
   "Returns true if the current drill session has reached the
 maximum number of items."
   (and org-drill-maximum-items-per-session
@@ -2629,12 +2631,12 @@ maximum number of items."
          (cond
           ;; First priority is items we failed in a prior session.
           ((and (oref session failed-entries)
-                (not (org-drill-maximum-item-count-reached-p))
+                (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
            (pop-random (oref session failed-entries)))
           ;; Next priority is overdue items.
           ((and (oref session overdue-entries)
-                (not (org-drill-maximum-item-count-reached-p))
+                (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
            ;; We use `pop', not `pop-random', because we have already
            ;; sorted overdue items into a random order which takes
@@ -2642,14 +2644,14 @@ maximum number of items."
            (pop (oref session overdue-entries)))
           ;; Next priority is 'young' items.
           ((and (oref session young-mature-entries)
-                (not (org-drill-maximum-item-count-reached-p))
+                (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
            (pop-random (oref session young-mature-entries)))
           ;; Next priority is newly added items, and older entries.
           ;; We pool these into a single group.
           ((and (or (oref session new-entries)
                     (oref session old-mature-entries))
-                (not (org-drill-maximum-item-count-reached-p))
+                (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
            (cond
             ((< (cl-random (+ (length (oref session new-entries))
@@ -2691,7 +2693,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
           (cond
            ((not (org-at-heading-p))
             (error "Not at heading for entry %s" m))
-           ((not (org-drill-entry-due-p))
+           ((not (org-drill-entry-due-p session))
             ;; The entry is not due anymore. This could arise if the user
             ;; suspends a drill session, then drills an individual entry,
             ;; then resumes the session.
@@ -2866,7 +2868,7 @@ all the markers used by Org-Drill will be freed."
 
 
 
-(defun org-drill-entry-days-since-creation (&optional use-last-interval-p)
+(defun org-drill-entry-days-since-creation (session &optional use-last-interval-p)
   "If USE-LAST-INTERVAL-P is non-nil, and DATE_ADDED is missing, use the
 value of DRILL_LAST_INTERVAL instead (as the item's age must be at least
 that many days)."
@@ -2875,12 +2877,12 @@ that many days)."
      (timestamp
       (- (org-time-stamp-to-now timestamp)))
      (use-last-interval-p
-      (+ (or (org-drill-entry-days-overdue) 0)
+      (+ (or (org-drill-entry-days-overdue session) 0)
          (read (or (org-entry-get (point) "DRILL_LAST_INTERVAL") "0"))))
      (t nil))))
 
 
-(defun org-drill-entry-status ()
+(defun org-drill-entry-status (session)
   "Returns a list (STATUS DUE AGE) where DUE is the number of days overdue,
 zero being due today, -1 being scheduled 1 day in the future.
 AGE is the number of days elapsed since the item was created (nil if unknown).
@@ -2897,8 +2899,8 @@ STATUS is one of the following values:
   (save-excursion
     (unless (org-at-heading-p)
       (org-back-to-heading))
-    (let ((due (org-drill-entry-days-overdue))
-          (age (org-drill-entry-days-since-creation t))
+    (let ((due (org-drill-entry-days-overdue session))
+          (age (org-drill-entry-days-since-creation session t))
           (last-int (org-drill-entry-last-interval 1)))
       (list
        (cond
@@ -2960,11 +2962,11 @@ STATUS is one of the following values:
       (length (oref session young-mature-entries))
       (length (oref session old-mature-entries))
       (length (oref session failed-entries)))
-   (cl-incf cnt))
+   (cl-incf (oref session cnt)))
   (when (org-drill-entry-p)
     (org-drill-id-get-create-with-warning session)
     (cl-destructuring-bind (status due age)
-        (org-drill-entry-status)
+        (org-drill-entry-status session)
       (cl-case status
         (:unscheduled
          (cl-incf (oref session dormant-entry-count)))
@@ -3696,7 +3698,7 @@ returns its return value."
 ;;; function can manipulate which subheading are hidden versus shown.
 
 
-(defun org-drill-present-spanish-verb ()
+(defun org-drill-present-spanish-verb (session)
   (let ((prompt nil)
         (reveal-headings nil))
     (with-hidden-comments
@@ -3735,7 +3737,7 @@ returns its return value."
                                "Spanish translation of this English verb.")
                 reveal-headings '("Infinitive" "Future Perfect Tense" "Notes"))))
        (org-cycle-hide-drawers 'all)
-       (prog1 (org-drill-presentation-prompt)
+       (prog1 (org-drill-presentation-prompt session)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
 
@@ -3909,7 +3911,9 @@ shuffling is done in place."
   "Capture all items marked with a leitner tag"
   (let ((cnt 0)
         (org-drill-question-tag org-drill-leitner-tag))
-    (org-drill-map-leitner #'org-drill-map-leitner-capture scope)
+    (org-drill-map-leitner
+     (apply-partially #'org-drill-map-leitner-capture (org-drill-session))
+     scope)
     (setq org-drill-leitner-boxed-entries
           (nreverse org-drill-leitner-boxed-entries)
           org-drill-leitner-unboxed-entries
@@ -3921,8 +3925,7 @@ shuffling is done in place."
   (org-drill-progress-message
    (+ (length org-drill-leitner-unboxed-entries)
       (length org-drill-leitner-boxed-entries))
-   ;; This variable is dynamically scoped in!
-   (cl-incf cnt))
+   (cl-incf (oref session cnt)))
   (when (org-drill-entry-p)
     (org-drill-id-get-create-with-warning session)
     (let ((leitner-box (org-entry-get (point) "DRILL_LEITNER_BOX" nil)))
@@ -3938,10 +3941,10 @@ shuffling is done in place."
         (push (point-marker)
               org-drill-leitner-boxed-entries))))))
 
-(defun org-drill-leitner-entry ()
+(defun org-drill-leitner-entry (session)
   "Interactive drill for the current entry."
   (let ((org-drill-question-tag org-drill-leitner-tag))
-    (org-drill-entry-f #'org-drill-leitner-rebox)))
+    (org-drill-entry-f (apply-partially #'org-drill-leitner-rebox session))))
 
 (defun org-drill-leitner-rebox ()
   "Returns quality rating (0-5), or nil if the user quit."
