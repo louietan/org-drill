@@ -438,6 +438,10 @@ pace of learning.")
 
 (add-to-list 'savehist-additional-variables
              'org-drill-sm5-optimal-factor-matrix)
+
+;; TODO This is used to save -- org-drill-sm5-optimal-factor-matrix
+;; but clearly saves everything else as well. We need a better
+;; solution here.
 (unless savehist-mode
   (savehist-mode 1))
 
@@ -596,9 +600,12 @@ to preserve the formatting in a displayed table, for example."
 
 (defvar-local org-drill-response-associated-buffer nil)
 
-(cl-defstruct org-drill-session (qualities))
+(cl-defstruct org-drill-session
+  (qualities nil)
+  (start-time 0))
 
-(defvar *org-drill-start-time* 0)
+(defvar org-drill-last-session nil)
+
 (defvar *org-drill-new-entries* nil)
 (defvar *org-drill-dormant-entry-count* 0)
 (defvar *org-drill-due-entry-count* 0)
@@ -2553,7 +2560,7 @@ See `org-drill' for more details."
   (or *org-drill-again-entries*
       *org-drill-current-item*
       (and (not (org-drill-maximum-item-count-reached-p))
-           (not (org-drill-maximum-duration-reached-p))
+           (not (org-drill-maximum-duration-reached-p session))
            (or *org-drill-new-entries*
                *org-drill-failed-entries*
                *org-drill-young-mature-entries*
@@ -2572,13 +2579,14 @@ See `org-drill' for more details."
      (length *org-drill-again-entries*)))
 
 
-(defun org-drill-maximum-duration-reached-p ()
+(defun org-drill-maximum-duration-reached-p (session)
   "Returns true if the current drill session has continued past its
 maximum duration."
   (and org-drill-maximum-duration
        (not *org-drill-cram-mode*)
-       *org-drill-start-time*
-       (> (- (float-time (current-time)) *org-drill-start-time*)
+       (org-drill-session-start-time session)
+       (> (- (float-time (current-time))
+             (org-drill-session-start-time session))
           (* org-drill-maximum-duration 60))))
 
 
@@ -2594,7 +2602,7 @@ maximum number of items."
           org-drill-maximum-items-per-session)))
 
 
-(defun org-drill-pop-next-pending-entry ()
+(defun org-drill-pop-next-pending-entry (session)
   (cl-block org-drill-pop-next-pending-entry
     (let ((m nil))
       (while (or (null m)
@@ -2605,12 +2613,12 @@ maximum number of items."
           ;; First priority is items we failed in a prior session.
           ((and *org-drill-failed-entries*
                 (not (org-drill-maximum-item-count-reached-p))
-                (not (org-drill-maximum-duration-reached-p)))
+                (not (org-drill-maximum-duration-reached-p session)))
            (pop-random *org-drill-failed-entries*))
           ;; Next priority is overdue items.
           ((and *org-drill-overdue-entries*
                 (not (org-drill-maximum-item-count-reached-p))
-                (not (org-drill-maximum-duration-reached-p)))
+                (not (org-drill-maximum-duration-reached-p session)))
            ;; We use `pop', not `pop-random', because we have already
            ;; sorted overdue items into a random order which takes
            ;; number of days overdue into account.
@@ -2618,14 +2626,14 @@ maximum number of items."
           ;; Next priority is 'young' items.
           ((and *org-drill-young-mature-entries*
                 (not (org-drill-maximum-item-count-reached-p))
-                (not (org-drill-maximum-duration-reached-p)))
+                (not (org-drill-maximum-duration-reached-p session)))
            (pop-random *org-drill-young-mature-entries*))
           ;; Next priority is newly added items, and older entries.
           ;; We pool these into a single group.
           ((and (or *org-drill-new-entries*
                     *org-drill-old-mature-entries*)
                 (not (org-drill-maximum-item-count-reached-p))
-                (not (org-drill-maximum-duration-reached-p)))
+                (not (org-drill-maximum-duration-reached-p session)))
            (cond
             ((< (cl-random (+ (length *org-drill-new-entries*)
                             (length *org-drill-old-mature-entries*)))
@@ -2653,7 +2661,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
                 ((or (not resuming-p)
                      (null *org-drill-current-item*)
                      (not (org-drill-entry-p *org-drill-current-item*)))
-                 (org-drill-pop-next-pending-entry))
+                 (org-drill-pop-next-pending-entry session))
                 (t                      ; resuming a suspended session.
                  (setq resuming-p nil)
                  *org-drill-current-item*))))
@@ -2723,7 +2731,8 @@ Tomorrow, %d more items will become due for review.
 Session finished. Press a key to continue..."
            (length *org-drill-done-entries*)
            (format-seconds "%h:%.2m:%.2s"
-                           (- (float-time (current-time)) *org-drill-start-time*))
+                           (- (float-time (current-time))
+                              (org-drill-session-start-time session)))
            (round (* 100 (cl-count 5 qualities))
                   (max 1 (length qualities)))
            (round (* 100 (cl-count 2 qualities))
@@ -3018,7 +3027,10 @@ than starting a new one."
          (format "Warning: org-drill requires org mode 7.9.3f or newer. Scheduling of failed cards will not
 work correctly with older versions of org mode. Your org mode version (%s) appears to be older than
 7.9.3f. Please consider installing a more recent version of org mode." (org-release)))))
-  (let ((session (make-org-drill-session))
+  (let ((session
+         (if resume-p
+             org-drill-last-session
+           (make-org-drill-session)))
         (end-pos nil)
         (overdue-data nil)
         (cnt 0))
@@ -3037,7 +3049,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               *org-drill-old-mature-entries* nil
               *org-drill-failed-entries* nil
               *org-drill-again-entries* nil)
-        (setq *org-drill-start-time* (float-time (current-time))))
+        (setf (org-drill-session-start-time session) (float-time (current-time))))
       (setq *random-state* (cl-make-random-state t)) ; reseed RNG
       (unwind-protect
           (save-excursion
@@ -3138,8 +3150,8 @@ scan will be performed."
     (org-drill-free-markers *org-drill-done-entries*)
     (if (markerp *org-drill-current-item*)
         (free-marker *org-drill-current-item*))
-    (setq *org-drill-start-time* (float-time (current-time))
-          *org-drill-done-entries* nil
+    (setf (org-drill-session-start-time session) (float-time (current-time)))
+    (setq *org-drill-done-entries* nil
           *org-drill-current-item* nil)
     (org-drill scope drill-match t))
    (t
