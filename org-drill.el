@@ -636,7 +636,12 @@ interval was greater than ORG-DRILL-DAYS-BEFORE-OLD days.")
     :initform nil
     :documementation "Are we in 'cram mode', where all items are considered due
 for review unless they were already reviewed in the recent past?"
-    ))
+    )
+   (warned-about-id-creation
+    :initform nil
+    :documentation "Have we warned the user about ID creation this session?")
+
+   )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
@@ -2946,7 +2951,7 @@ STATUS is one of the following values:
                             sym1)))))
 
 
-(defun org-map-drill-entry-function ()
+(defun org-map-drill-entry-function (session)
   (org-drill-progress-message
    (+ (length (oref session new-entries))
       (length (oref session overdue-entries))
@@ -2955,7 +2960,7 @@ STATUS is one of the following values:
       (length (oref session failed-entries)))
    (cl-incf cnt))
   (when (org-drill-entry-p)
-    (org-drill-id-get-create-with-warning)
+    (org-drill-id-get-create-with-warning session )
     (cl-destructuring-bind (status due age)
         (org-drill-entry-status)
       (cl-case status
@@ -2981,13 +2986,13 @@ STATUS is one of the following values:
         ))))
 
 
-(defun org-drill-id-get-create-with-warning()
-  (when (and (not warned-about-id-creation)
+(defun org-drill-id-get-create-with-warning(session)
+  (when (and (not (oref session warned-about-id-creation))
              (null (org-id-get)))
     (message (concat "Creating unique IDs for items "
                      "(slow, but only happens once)"))
     (sit-for 0.5)
-    (setq warned-about-id-creation t))
+    (setf (oref session warned-about-id-creation) t))
   (org-id-get-create))
 
 
@@ -3064,10 +3069,9 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
       (unwind-protect
           (save-excursion
             (unless resume-p
-              (let ((org-trust-scanner-tags t)
-                    (warned-about-id-creation nil))
+              (let ((org-trust-scanner-tags t))
                 (org-map-drill-entries
-                 'org-map-drill-entry-function
+                 (apply-partially #'org-map-drill-entry-function session)
                  scope drill-match)
                 (org-drill-order-overdue-entries session overdue-data)
                 (setf (oref session overdue-entry-count)
@@ -3806,12 +3810,11 @@ Returns a list of strings."
   (let* ((session org-drill-last-session)
          (pending (org-drill-pending-entry-count session)))
     (unless (cl-plusp pending)
-      (let ((warned-about-id-creation nil)
-            (cnt 0)
+      (let ((cnt 0)
             (overdue-data nil)
             (end-pos nil))
         (org-map-drill-entries
-         'org-map-drill-entry-function
+         (apply-partially 'org-map-drill-entry-function session)
          nil nil)))
     ;; if the overdue entries are not ones we have just created
     (if (> (org-drill-pending-entry-count session) org-drill-leitner-completed)
@@ -3829,7 +3832,6 @@ Returns a list of strings."
   (interactive)
   (let ((org-drill-leitner-boxed-entries nil)
         (org-drill-leitner-unboxed-entries nil)
-        (warned-about-id-creation nil)
         (count 0))
     (org-drill-all-leitner-capture)
     ;; make sure we have enough (or at least the maximum number we
@@ -3913,7 +3915,7 @@ shuffling is done in place."
           org-drill-leitner-unboxed-entries
           (nreverse org-drill-leitner-unboxed-entries))))
 
-(defun org-drill-map-leitner-capture ()
+(defun org-drill-map-leitner-capture (session)
   "Capture this entry if it is a valid leitner entry"
   ;; This bit is all rather shared with org-map-drill-entry-function
   (org-drill-progress-message
@@ -3922,7 +3924,7 @@ shuffling is done in place."
    ;; This variable is dynamically scoped in!
    (cl-incf cnt))
   (when (org-drill-entry-p)
-    (org-drill-id-get-create-with-warning)
+    (org-drill-id-get-create-with-warning session)
     (let ((leitner-box (org-entry-get (point) "DRILL_LEITNER_BOX" nil)))
       (cond
        ;; Entries we have not looked at yet
