@@ -3065,7 +3065,6 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               (oref session failed-entries) nil
               (oref session again-entries) nil
               (oref session start-time) (float-time (current-time))))
-      (setq *random-state* (cl-make-random-state t)) ; reseed RNG
       (unwind-protect
           (save-excursion
             (unless resume-p
