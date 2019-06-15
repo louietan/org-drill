@@ -611,15 +611,16 @@ to preserve the formatting in a displayed table, for example."
    (due-entry-count :initform 0)
    (overdue-entry-count :initform 0)
    (due-tomorrow-count :initform 0)
-   )
+   (overdue-entries :initform nil
+                    :documentation
+                    "List of markers for items that are
+considered 'overdue', based on the value of
+ORG-DRILL-OVERDUE-INTERVAL-FACTOR."))
   :documentation "An org-drill session object carries data about
-  the current state of a particular org-drill session."  )
+  the current state of a particular org-drill session." )
 
 (defvar org-drill-last-session nil)
 
-(defvar *org-drill-overdue-entries* nil
-  "List of markers for items that are considered 'overdue', based on
-the value of ORG-DRILL-OVERDUE-INTERVAL-FACTOR.")
 (defvar *org-drill-young-mature-entries* nil
   "List of markers for mature entries whose last inter-repetition
 interval was <= ORG-DRILL-DAYS-BEFORE-OLD days.")
@@ -1603,12 +1604,11 @@ the current topic."
    (lambda () (let ((drill-heading (org-get-heading t)))
            (not (member drill-heading heading-list))))))
 
-
-(defun org-drill--make-minibuffer-prompt (prompt)
+(defun org-drill--make-minibuffer-prompt (session prompt)
   (let ((status (cl-first (org-drill-entry-status)))
         (mature-entry-count (+ (length *org-drill-young-mature-entries*)
                                (length *org-drill-old-mature-entries*)
-                               (length *org-drill-overdue-entries*))))
+                               (length (oref session overdue-entries)))))
     (format "%s %s %s %s %s %s"
             (propertize
              (char-to-string
@@ -1701,7 +1701,7 @@ START-TIME: The time the card started to be displayed.  This
                       org-drill--skip-key
                       org-drill--quit-key)))
          (full-prompt
-          (org-drill--make-minibuffer-prompt prompt)))
+          (org-drill--make-minibuffer-prompt session prompt)))
     (if (and (eql 'warn org-drill-leech-method)
              (org-drill-entry-leech-p))
         (setq full-prompt (concat
@@ -1820,7 +1820,7 @@ Consider reformulating the item to make it easier to remember.\n"
                   org-drill--skip-key
                   org-drill--quit-key))
          (full-prompt
-          (org-drill--make-minibuffer-prompt prompt)))
+          (org-drill--make-minibuffer-prompt session prompt)))
     (setq drill-typed-answer nil)
     (if (and (eql 'warn org-drill-leech-method)
              (org-drill-entry-leech-p))
@@ -1862,7 +1862,7 @@ START-TIME: The time the card started to be displayed.  This
           (or prompt
               "Type your answer and press <Enter>: "))
          (full-prompt
-          (org-drill--make-minibuffer-prompt prompt)))
+          (org-drill--make-minibuffer-prompt session prompt)))
     (if (and (eql 'warn org-drill-leech-method)
              (org-drill-entry-leech-p))
         (setq full-prompt (concat
@@ -2571,7 +2571,7 @@ See `org-drill' for more details."
                *org-drill-failed-entries*
                *org-drill-young-mature-entries*
                *org-drill-old-mature-entries*
-               *org-drill-overdue-entries*
+               (oref session overdue-entries)
                *org-drill-again-entries*))))
 
 (defun org-drill-pending-entry-count (session)
@@ -2580,7 +2580,7 @@ See `org-drill' for more details."
      (length *org-drill-failed-entries*)
      (length *org-drill-young-mature-entries*)
      (length *org-drill-old-mature-entries*)
-     (length *org-drill-overdue-entries*)
+     (length (oref session overdue-entries))
      (length *org-drill-again-entries*)))
 
 
@@ -2621,13 +2621,13 @@ maximum number of items."
                 (not (org-drill-maximum-duration-reached-p session)))
            (pop-random *org-drill-failed-entries*))
           ;; Next priority is overdue items.
-          ((and *org-drill-overdue-entries*
+          ((and (oref session overdue-entries)
                 (not (org-drill-maximum-item-count-reached-p))
                 (not (org-drill-maximum-duration-reached-p session)))
            ;; We use `pop', not `pop-random', because we have already
            ;; sorted overdue items into a random order which takes
            ;; number of days overdue into account.
-           (pop *org-drill-overdue-entries*))
+           (pop (oref session overdue-entries)))
           ;; Next priority is 'young' items.
           ((and *org-drill-young-mature-entries*
                 (not (org-drill-maximum-item-count-reached-p))
@@ -2762,7 +2762,7 @@ Session finished. Press a key to continue..."
             'face `(:foreground ,org-drill-failed-count-color))
            (propertize
             (format "%d overdue"
-                    (length *org-drill-overdue-entries*))
+                    (length (oref session overdue-entries)))
             'face `(:foreground ,org-drill-failed-count-color))
            (propertize
             (format "%d new"
@@ -2814,7 +2814,7 @@ all the markers used by Org-Drill will be freed."
                           (oref session new-entries)
                           *org-drill-failed-entries*
                           *org-drill-again-entries*
-                          *org-drill-overdue-entries*
+                          (oref session overdue-entries)
                           *org-drill-young-mature-entries*
                           *org-drill-old-mature-entries*)
                markers))
@@ -2828,15 +2828,14 @@ all the markers used by Org-Drill will be freed."
 ;;; if age > lapse threshold (default 90), sort by age (oldest first)
 ;;; if age < lapse threshold, sort by due (biggest first)
 
-
-(defun org-drill-order-overdue-entries (overdue-data)
+(defun org-drill-order-overdue-entries (session overdue-data)
   (let* ((lapsed-days (if org-drill--lapse-very-overdue-entries-p
                           90 most-positive-fixnum))
          (not-lapsed (cl-remove-if (lambda (a) (> (or (cl-second a) 0) lapsed-days))
                                 overdue-data))
          (lapsed (cl-remove-if-not (lambda (a) (> (or (cl-second a) 0)
                                           lapsed-days)) overdue-data)))
-    (setq *org-drill-overdue-entries*
+    (setf (oref session overdue-entries)
           (mapcar 'first
                   (append
                    (sort (shuffle-list not-lapsed)
@@ -2943,7 +2942,7 @@ STATUS is one of the following values:
 (defun org-map-drill-entry-function ()
   (org-drill-progress-message
    (+ (length (oref session new-entries))
-      (length *org-drill-overdue-entries*)
+      (length (oref session overdue-entries))
       (length *org-drill-young-mature-entries*)
       (length *org-drill-old-mature-entries*)
       (length *org-drill-failed-entries*))
@@ -3048,7 +3047,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               (oref session due-tomorrow-count) 0
               (oref session overdue-entry-count) 0
               (oref session new-entries) nil
-              *org-drill-overdue-entries* nil
+              (oref session overdue-entries) nil
               *org-drill-young-mature-entries* nil
               *org-drill-old-mature-entries* nil
               *org-drill-failed-entries* nil
@@ -3063,16 +3062,16 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
                 (org-map-drill-entries
                  'org-map-drill-entry-function
                  scope drill-match)
-                (org-drill-order-overdue-entries overdue-data)
+                (org-drill-order-overdue-entries session overdue-data)
                 (setf (oref session overdue-entry-count)
-                      (length *org-drill-overdue-entries*))))
+                      (length (oref session overdue-entries)))))
             (setf (oref session due-entry-count)
                   (org-drill-pending-entry-count session))
             (cond
              ((and (null *org-drill-current-item*)
                    (null (oref session new-entries))
                    (null *org-drill-failed-entries*)
-                   (null *org-drill-overdue-entries*)
+                   (null (oref session overdue-entries))
                    (null *org-drill-young-mature-entries*)
                    (null *org-drill-old-mature-entries*))
               (message "I did not find any pending drill items."))
