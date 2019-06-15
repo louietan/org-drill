@@ -7,14 +7,14 @@ ifdef EMACS
 EMACS_ENV=EMACS=$(EMACS)
 endif
 
-all:
+all: robot-and-test
 
 install:
 	$(EMACS_ENV) $(CASK) install
 
 test: install just-test
 
-robot-and-test: robot-test just-test
+robot-and-test: basic-robot-test just-test
 
 just-test:
 	$(EMACS_ENV) $(CASK) emacs --batch -q \
@@ -35,8 +35,8 @@ docker-test:
 	$(MAKE) test-git DOCKER_TAG=25.3
 	$(MAKE) test-cp DOCKER_TAG=25.3
 
-robot-test:
+basic-robot-test:
 	$(CASK) clean-elc
-	$(EMACS_ENV) ./robot/robot-test.sh
+	$(EMACS_ENV) ./robot/basic-run.sh
 
 .PHONY: test

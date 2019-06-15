@@ -13,6 +13,11 @@
 (setq debug-on-error t)
 (setq debug-on-quit t)
 
+(defun die ()
+  (interactive)
+  (kill-emacs)
+  )
+
 (defun dump-buffer (buffer file)
   (save-excursion
     (when (get-buffer buffer)
@@ -37,7 +42,8 @@
 (defun org-drill-launcher-dump ()
   (dump-buffer "*Backtrace*" "failure.txt")
   (dump-buffer "*Messages*" "messages.txt")
-  (kill-emacs -1))
+  (kill-emacs -1)
+  )
 
 (load-file "org-drill.el")
 
