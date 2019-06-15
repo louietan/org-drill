@@ -608,16 +608,15 @@ to preserve the formatting in a displayed table, for example."
                :type float)
    (new-entries :initform nil)
    (dormant-entry-count :initform 0)
+   (due-entry-count :initform 0)
+   (overdue-entry-count :initform 0)
+   (due-tomorrow-count :initform 0)
    )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session."  )
 
 (defvar org-drill-last-session nil)
 
-
-(defvar *org-drill-due-entry-count* 0)
-(defvar *org-drill-overdue-entry-count* 0)
-(defvar *org-drill-due-tomorrow-count* 0)
 (defvar *org-drill-overdue-entries* nil
   "List of markers for items that are considered 'overdue', based on
 the value of ORG-DRILL-OVERDUE-INTERVAL-FACTOR.")
@@ -2777,7 +2776,7 @@ Session finished. Press a key to continue..."
             (format "%d old"
                     (length *org-drill-old-mature-entries*))
             'face `(:foreground ,org-drill-mature-count-color))
-           *org-drill-due-tomorrow-count*
+           (oref session due-tomorrow-count)
            ))
 
     (while (not (input-pending-p))
@@ -2799,10 +2798,10 @@ lowering the value of `org-drill-learn-fraction' slightly in
 order to make items appear more frequently over time."
           (propertize "WARNING!" 'face 'org-warning)
           (- 100 pass-percent)
-          *org-drill-overdue-entry-count*
-          (round (* 100 *org-drill-overdue-entry-count*)
+          (oref session overdue-entry-count)
+          (round (* 100 (oref session overdue-entry-count))
                  (+ (oref session dormant-entry-count)
-                    *org-drill-due-entry-count*)))
+                    (oref session due-entry-count))))
          ))))
 
 
@@ -2962,7 +2961,7 @@ STATUS is one of the following values:
         (:future
          (cl-incf (oref session dormant-entry-count))
          (if (eq -1 due)
-             (cl-incf *org-drill-due-tomorrow-count*)))
+             (cl-incf (oref session due-tomorrow-count))))
         (:new
          (push (point-marker) (oref session new-entries)))
         (:failed
@@ -3045,9 +3044,9 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
         (setf *org-drill-current-item* nil
               *org-drill-done-entries* nil
               (oref session dormant-entry-count) 0
-              *org-drill-due-entry-count* 0
-              *org-drill-due-tomorrow-count* 0
-              *org-drill-overdue-entry-count* 0
+              (oref session due-entry-count) 0
+              (oref session due-tomorrow-count) 0
+              (oref session overdue-entry-count) 0
               (oref session new-entries) nil
               *org-drill-overdue-entries* nil
               *org-drill-young-mature-entries* nil
@@ -3065,9 +3064,9 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
                  'org-map-drill-entry-function
                  scope drill-match)
                 (org-drill-order-overdue-entries overdue-data)
-                (setq *org-drill-overdue-entry-count*
+                (setf (oref session overdue-entry-count)
                       (length *org-drill-overdue-entries*))))
-            (setq *org-drill-due-entry-count*
+            (setf (oref session due-entry-count)
                   (org-drill-pending-entry-count session))
             (cond
              ((and (null *org-drill-current-item*)
