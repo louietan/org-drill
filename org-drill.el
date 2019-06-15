@@ -646,7 +646,10 @@ for review unless they were already reviewed in the recent past?"
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
+
+(defvar org-drill-current-session nil)
 (defvar org-drill-last-session nil)
+(defvar org-drill-presentation-exit-kind nil)
 
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
@@ -1783,29 +1786,28 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (defun org-drill-response-rtn ()
   (interactive)
-  (message "response-rtn")
-  (setq drill-typed-answer (buffer-string)
-        exit-kind t)
+  (setq drill-typed-answer (buffer-string))
+  (setq org-drill-presentation-exit-kind t)
   (org-drill-response-complete))
 
 (defun org-drill-response-quit ()
   (interactive)
-  (setq exit-kind 'quit)
+  (setq org-drill-presentation-exit-kind 'quit)
   (org-drill-response-complete))
 
 (defun org-drill-response-edit ()
   (interactive)
-  (setq exit-kind 'edit)
+  (setq org-drill-presentation-exit-kind 'edit)
   (org-drill-response-complete))
 
 (defun org-drill-response-skip ()
   (interactive)
-  (setq exit-kind 'skip)
+  (setq org-drill-presentation-exit-kind 'skip)
   (org-drill-response-complete))
 
 (defun org-drill-response-tags ()
   (interactive)
-  (setq exit-kind 'tags)
+  (setq org-drill-presentation-exit-kind 'tags)
   (org-drill-response-complete))
 
 (defun org-drill-response-get-buffer-create ()
@@ -1849,15 +1851,17 @@ Consider reformulating the item to make it easier to remember.\n"
                                #'org-drill-presentation-minibuffer-timer-function
                                item-start-time full-prompt)
           org-drill-presentation-timer-calls 0)
-    (let ((exit-kind)
-            (buf
+    (save-window-excursion
+      (let ((buf
              (org-drill-response-get-buffer-create)))
-        (save-window-excursion
-          (select-window
-           (display-buffer-below-selected buf nil))
-          (recursive-edit)
-          (org-drill-presentation-timer-cancel)
-          exit-kind))))
+        (select-window
+         (display-buffer-below-selected buf nil))
+        ;; Store the current session in a variable, so that it can
+        ;; be picked up by the when we leave the buffer
+        (setq-local org-drill-current-session session)
+        (recursive-edit)
+        (org-drill-presentation-timer-cancel)
+        org-drill-presentation-exit-kind))))
 
 (cl-defun org-drill-presentation-prompt-for-string (prompt)
   "Create a card prompt with a timer and user-specified menu.
