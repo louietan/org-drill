@@ -2638,7 +2638,7 @@ maximum number of items."
           (*org-drill-again-entries*
            (pop *org-drill-again-entries*))
           (t                            ; nothing left -- return nil
-           (return-from org-drill-pop-next-pending-entry nil)))))
+           (cl-return-from org-drill-pop-next-pending-entry nil)))))
       m)))
 
 
@@ -2680,10 +2680,10 @@ RESUMING-P is true if we are resuming a suspended drill session."
              ((null result)
               (message "Quit")
               (setq end-pos :quit)
-              (return-from org-drill-entries nil))
+              (cl-return-from org-drill-entries nil))
              ((eql result 'edit)
               (setq end-pos (point-marker))
-              (return-from org-drill-entries nil))
+              (cl-return-from org-drill-entries nil))
              ((eql result 'skip)
               (setq *org-drill-current-item* nil)
               nil)                      ; skip this item
@@ -3265,7 +3265,7 @@ the tag 'imported'."
                 (condition-case nil
                     (org-find-olp path t)
                   (error                ; path does not exist in DEST
-                   (return-from org-drill-copy-entry-to-other-buffer
+                   (cl-return-from org-drill-copy-entry-to-other-buffer
                      (cond
                       ((cdr path)
                        (org-drill-copy-entry-to-other-buffer
