@@ -51,6 +51,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'hi-lock))
+(require 'eieio)
 (require 'cl-lib)
 (require 'hi-lock)
 (require 'org)
@@ -600,11 +601,15 @@ to preserve the formatting in a displayed table, for example."
 
 (defvar-local org-drill-response-associated-buffer nil)
 
-(cl-defstruct org-drill-session
-  (qualities nil)
-  (start-time 0)
-  (new-entries nil)
-  )
+(defclass org-drill-session ()
+  ((qualities :initform nil)
+   (start-time :initform 0
+               :documentation "Time at which the session started"
+               )
+   (new-entries :initform nil)
+   )
+  :documentation "An org-drill session object carries data about
+  the current state of a particular org-drill session."  )
 
 (defvar org-drill-last-session nil)
 
@@ -1522,7 +1527,7 @@ of QUALITY."
             (let ((quality (if (org-drill--entry-lapsed-p) 2 quality)))
               (org-drill-smart-reschedule quality
                                           (nth quality next-review-dates))))
-          (push quality (org-drill-session-qualities session))
+          (push quality (oref session qualities))
           (cond
            ((<= quality org-drill-failure-quality)
             (when org-drill-leech-failure-threshold
@@ -1635,7 +1640,7 @@ the current topic."
              'face `(:foreground ,org-drill-mature-count-color)
              'help-echo "The number of old items due for review.")
             (propertize
-             (number-to-string (length (org-drill-session-new-entries session)))
+             (number-to-string (length (oref session new-entries)))
              'face `(:foreground ,org-drill-new-count-color)
              'help-echo (concat "The number of new items that you "
                                 "have never reviewed."))
@@ -2562,7 +2567,7 @@ See `org-drill' for more details."
       *org-drill-current-item*
       (and (not (org-drill-maximum-item-count-reached-p))
            (not (org-drill-maximum-duration-reached-p session))
-           (or (org-drill-session-new-entries session)
+           (or (oref session new-entries)
                *org-drill-failed-entries*
                *org-drill-young-mature-entries*
                *org-drill-old-mature-entries*
@@ -2571,7 +2576,7 @@ See `org-drill' for more details."
 
 (defun org-drill-pending-entry-count (session)
   (+ (if (markerp *org-drill-current-item*) 1 0)
-     (length (org-drill-session-new-entries session))
+     (length (oref session new-entries))
      (length *org-drill-failed-entries*)
      (length *org-drill-young-mature-entries*)
      (length *org-drill-old-mature-entries*)
@@ -2584,9 +2589,9 @@ See `org-drill' for more details."
 maximum duration."
   (and org-drill-maximum-duration
        (not *org-drill-cram-mode*)
-       (org-drill-session-start-time session)
+       (oref session start-time)
        (> (- (float-time (current-time))
-             (org-drill-session-start-time session))
+             (oref session start-time))
           (* org-drill-maximum-duration 60))))
 
 
@@ -2630,15 +2635,15 @@ maximum number of items."
            (pop-random *org-drill-young-mature-entries*))
           ;; Next priority is newly added items, and older entries.
           ;; We pool these into a single group.
-          ((and (or (org-drill-session-new-entries session)
+          ((and (or (oref session new-entries)
                     *org-drill-old-mature-entries*)
                 (not (org-drill-maximum-item-count-reached-p))
                 (not (org-drill-maximum-duration-reached-p session)))
            (cond
-            ((< (cl-random (+ (length (org-drill-session-new-entries session))
+            ((< (cl-random (+ (length (oref session new-entries))
                               (length *org-drill-old-mature-entries*)))
-                (length (org-drill-session-new-entries session)))
-             (pop-random (org-drill-session-new-entries session)))
+                (length (oref session new-entries)))
+             (pop-random (oref session new-entries)))
             (t
              (pop-random *org-drill-old-mature-entries*))))
           ;; After all the above are done, last priority is items
@@ -2709,7 +2714,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
 
 
 (defun org-drill-final-report (session)
-  (let* ((qualities (org-drill-session-qualities session))
+  (let* ((qualities (oref session qualities))
          (pass-percent
           (round (* 100 (cl-count-if (lambda (qual)
                                        (> qual org-drill-failure-quality))
@@ -2732,7 +2737,7 @@ Session finished. Press a key to continue..."
            (length *org-drill-done-entries*)
            (format-seconds "%h:%.2m:%.2s"
                            (- (float-time (current-time))
-                              (org-drill-session-start-time session)))
+                              (oref session start-time)))
            (round (* 100 (cl-count 5 qualities))
                   (max 1 (length qualities)))
            (round (* 100 (cl-count 2 qualities))
@@ -2761,7 +2766,7 @@ Session finished. Press a key to continue..."
             'face `(:foreground ,org-drill-failed-count-color))
            (propertize
             (format "%d new"
-                    (length (org-drill-session-new-entries session)))
+                    (length (oref session new-entries)))
             'face `(:foreground ,org-drill-new-count-color))
            (propertize
             (format "%d young"
@@ -2806,7 +2811,7 @@ point nowhere). Alternatively, MARKERS can be 't', in which case
 all the markers used by Org-Drill will be freed."
   (dolist (m (if (eql t markers)
                  (append  *org-drill-done-entries*
-                          (org-drill-session-new-entries session)
+                          (oref session new-entries)
                           *org-drill-failed-entries*
                           *org-drill-again-entries*
                           *org-drill-overdue-entries*
@@ -2937,7 +2942,7 @@ STATUS is one of the following values:
 
 (defun org-map-drill-entry-function ()
   (org-drill-progress-message
-   (+ (length (org-drill-session-new-entries session))
+   (+ (length (oref session new-entries))
       (length *org-drill-overdue-entries*)
       (length *org-drill-young-mature-entries*)
       (length *org-drill-old-mature-entries*)
@@ -2958,7 +2963,7 @@ STATUS is one of the following values:
          (if (eq -1 due)
              (cl-incf *org-drill-due-tomorrow-count*)))
         (:new
-         (push (point-marker) (org-drill-session-new-entries session)))
+         (push (point-marker) (oref session new-entries)))
         (:failed
          (push (point-marker) *org-drill-failed-entries*))
         (:young
@@ -3029,7 +3034,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
   (let ((session
          (if resume-p
              org-drill-last-session
-           (make-org-drill-session)))
+           (org-drill-session)))
         (end-pos nil)
         (overdue-data nil)
         (cnt 0))
@@ -3042,13 +3047,13 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               *org-drill-due-entry-count* 0
               *org-drill-due-tomorrow-count* 0
               *org-drill-overdue-entry-count* 0
-              (org-drill-session-new-entries session) nil
+              (oref session new-entries) nil
               *org-drill-overdue-entries* nil
               *org-drill-young-mature-entries* nil
               *org-drill-old-mature-entries* nil
               *org-drill-failed-entries* nil
               *org-drill-again-entries* nil
-              (org-drill-session-start-time session) (float-time (current-time))))
+              (oref session start-time) (float-time (current-time))))
       (setq *random-state* (cl-make-random-state t)) ; reseed RNG
       (unwind-protect
           (save-excursion
@@ -3065,7 +3070,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
                   (org-drill-pending-entry-count session))
             (cond
              ((and (null *org-drill-current-item*)
-                   (null (org-drill-session-new-entries session))
+                   (null (oref session new-entries))
                    (null *org-drill-failed-entries*)
                    (null *org-drill-overdue-entries*)
                    (null *org-drill-young-mature-entries*)
@@ -3151,7 +3156,7 @@ scan will be performed."
       (org-drill-free-markers session *org-drill-done-entries*)
       (if (markerp *org-drill-current-item*)
           (free-marker *org-drill-current-item*))
-      (setf (org-drill-session-start-time session) (float-time (current-time)))
+      (setf (oref session start-time) (float-time (current-time)))
       (setq *org-drill-done-entries* nil
             *org-drill-current-item* nil)
       (org-drill scope drill-match t))
