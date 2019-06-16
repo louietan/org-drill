@@ -642,14 +642,16 @@ for review unless they were already reviewed in the recent past?"
     :documentation "Have we warned the user about ID creation this session?")
    (overdue-data :initform nil)
    (cnt :initform 0)
-   )
+   (exit-kind
+    :initform nil
+    :documentation "Return value from typed answers which use recursive edit."))
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
 
 (defvar org-drill-current-session nil)
 (defvar org-drill-last-session nil)
-(defvar org-drill-presentation-exit-kind nil)
+
 
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
@@ -1787,27 +1789,27 @@ Consider reformulating the item to make it easier to remember.\n"
 (defun org-drill-response-rtn ()
   (interactive)
   (setq drill-typed-answer (buffer-string))
-  (setq org-drill-presentation-exit-kind t)
+  (oset org-drill-current-session exit-kind t)
   (org-drill-response-complete))
 
 (defun org-drill-response-quit ()
   (interactive)
-  (setq org-drill-presentation-exit-kind 'quit)
+  (oset org-drill-current-session exit-kind 'quit)
   (org-drill-response-complete))
 
 (defun org-drill-response-edit ()
   (interactive)
-  (setq org-drill-presentation-exit-kind 'edit)
+  (oset org-drill-current-session exit-kind 'edit)
   (org-drill-response-complete))
 
 (defun org-drill-response-skip ()
   (interactive)
-  (setq org-drill-presentation-exit-kind 'skip)
+  (oset org-drill-current-session exit-kind 'skip)
   (org-drill-response-complete))
 
 (defun org-drill-response-tags ()
   (interactive)
-  (setq org-drill-presentation-exit-kind 'tags)
+  (oset org-drill-current-session exit-kind 'tags)
   (org-drill-response-complete))
 
 (defun org-drill-response-get-buffer-create ()
@@ -1861,7 +1863,7 @@ Consider reformulating the item to make it easier to remember.\n"
         (setq-local org-drill-current-session session)
         (recursive-edit)
         (org-drill-presentation-timer-cancel)
-        org-drill-presentation-exit-kind))))
+        (oref session exit-kind)))))
 
 (cl-defun org-drill-presentation-prompt-for-string (prompt)
   "Create a card prompt with a timer and user-specified menu.
