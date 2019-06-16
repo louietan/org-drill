@@ -31,9 +31,6 @@ source $this_dir/robot.sh
 
 launch_emacs $this_dir/basic-run.el
 
-#small_sleep=5
-#big_sleep=10
-
 {
     sleep 2
     find_bot
@@ -44,6 +41,6 @@ launch_emacs $this_dir/basic-run.el
     ## Run once with presentation-prompt-with-typing
     run_drill
 
-    kill_emacs
+    wait_emacs
 } || cat robot/failure.txt
     $EMACS -Q -l $1 &

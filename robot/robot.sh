@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 ## call find_bot to init this
 window_id=
 
@@ -7,6 +9,8 @@ window_id=
 ## when you are not sure what is happening
 small_sleep=0.25
 big_sleep=1
+
+emacs_process_pid=
 
 function sleep_small {
     sleep $small_sleep
@@ -26,6 +30,7 @@ function send_answer {
 function launch_emacs {
     echo Launching $EMACS -Q -l $1 &
     $EMACS -Q -l $1 &
+    emacs_process_pid=$!
 }
 
 function kill_emacs {
@@ -34,16 +39,25 @@ function kill_emacs {
     retn
 }
 
+function xdo {
+    xdotool $1 --window $window_id $2 || {
+        echo "Failed command: $1, $2";exit 1
+    }
+}
 function key {
-    xdotool key --window $window_id $1
+    xdo key $1
 }
 
 function command {
-    xdotool type --window $window_id $1
+    xdo type $1
 }
 
 function retn {
-    xdotool key --window $window_id Return
+    key Return
+}
+
+function wait_emacs {
+    wait $emacs_process_pid
 }
 
 function find_bot {

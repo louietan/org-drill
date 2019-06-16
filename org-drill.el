@@ -652,6 +652,11 @@ for review unless they were already reviewed in the recent past?"
 (defvar org-drill-current-session nil)
 (defvar org-drill-last-session nil)
 
+(defvar org-drill-cards-in-this-emacs 0
+  "The total number of cards displayed in this Emacs invocation.
+
+This variable is not functionally important, but is used for
+  debugging.")
 
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
@@ -2578,6 +2583,7 @@ See `org-drill' for more details."
             (mapc
              (apply-partially 'org-drill-card-tag-caller 3)
              (org-get-tags))
+            (cl-incf org-drill-cards-in-this-emacs)
             (org-remove-latex-fragment-image-overlays)
             rtn))))))
 
@@ -3056,7 +3062,8 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
   (let ((session
          (if resume-p
              org-drill-last-session
-           (org-drill-session)))
+           (setq org-drill-last-session
+                 (org-drill-session))))
         (end-pos nil)
         (cnt 0))
     (cl-block org-drill
