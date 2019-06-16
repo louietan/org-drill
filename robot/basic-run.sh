@@ -31,8 +31,8 @@ source $this_dir/robot.sh
 
 launch_emacs $this_dir/basic-run.el
 
-bsmall_sleep=5
-big_sleep=10
+#small_sleep=5
+#big_sleep=10
 
 {
     sleep 2
@@ -44,6 +44,6 @@ big_sleep=10
     ## Run once with presentation-prompt-with-typing
     run_drill
 
-   # kill_emacs
+    kill_emacs
 } || cat robot/failure.txt
     $EMACS -Q -l $1 &
