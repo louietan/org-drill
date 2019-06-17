@@ -582,13 +582,6 @@ This variable is useful for card types that compute their answers
 -- for example, a card type that asks the student to translate a
 random number to another language. ")
 
-
-(defvar drill-typed-answer nil
-  "Global variable that can be bound to the last answer typed by
-the user. Used by card types that ask the user to type in an
-answer, rather than just pressing spacebar to reveal the
-answer.")
-
 (defvar org-drill-display-answer-hook nil)
 
 (defcustom org-drill-cloze-length-matches-hidden-text-p
@@ -644,7 +637,11 @@ for review unless they were already reviewed in the recent past?"
    (cnt :initform 0)
    (exit-kind
     :initform nil
-    :documentation "Return value from typed answers which use recursive edit."))
+    :documentation "Return value from typed answers which use recursive edit.")
+   (typed-answer
+    :initform nil
+    :documentation "The last answer typed by the user.")
+   )
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
@@ -1472,9 +1469,9 @@ of QUALITY."
   (let ((ch nil)
         (input nil)
         (next-review-dates (org-drill-hypothetical-next-review-dates))
-        (typed-answer-statement (if drill-typed-answer
+        (typed-answer-statement (if (oref session typed-answer)
                                     (format "Your answer: %s\n"
-                                            drill-typed-answer)
+                                            (oref session typed-answer))
                                   ""))
         (key-prompt (format "(0-5, %c=help, %c=edit, %c=tags, %c=quit)"
                             org-drill--help-key
@@ -1776,9 +1773,10 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (defun org-drill-response-rtn ()
   (interactive)
-  (setq drill-typed-answer (buffer-string))
-  (oset org-drill-current-session exit-kind t)
-  (org-drill-response-complete))
+  (let ((session org-drill-current-session))
+    (setf (oref session drill-typed-answer) (buffer-string))
+    (oset session exit-kind t)
+    (org-drill-response-complete)))
 
 (defun org-drill-response-quit ()
   (interactive)
@@ -3943,13 +3941,13 @@ shuffling is done in place."
   (let ((org-drill-question-tag org-drill-leitner-tag))
     (org-drill-entry-f (apply-partially #'org-drill-leitner-rebox session))))
 
-(defun org-drill-leitner-rebox ()
+(defun org-drill-leitner-rebox (session)
   "Returns quality rating (0-5), or nil if the user quit."
   (let ((ch nil)
         (input nil)
-        (typed-answer-statement (if drill-typed-answer
+        (typed-answer-statement (if (oref session typed-answer)
                                     (format "Your answer: %s\n"
-                                            drill-typed-answer)
+                                            (oref session typed-answer))
                                   ""))
         (key-prompt (format "(0-5, %c=help, %c=edit, %c=tags, %c=quit)"
                             org-drill--help-key
