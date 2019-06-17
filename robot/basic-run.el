@@ -2,8 +2,8 @@
 (load-file "org-drill.el")
 
 (defun org-drill-do-drill ()
-  (copy-file "robot/main-test.org" "robot/main-test-copy.org" t)
-  (find-file "robot/main-test-copy.org")
+  (copy "main-test.org" "main-test-copy.org")
+  (find "main-test-copy.org")
 
   (org-drill)
   (set-buffer-modified-p nil)

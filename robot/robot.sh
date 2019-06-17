@@ -28,8 +28,9 @@ function send_answer {
 }
 
 function launch_emacs {
-    echo Launching $EMACS -Q -l $1 &
-    $EMACS -Q -l $1 &
+    echo Launching $EMACS -Q -l $* &
+
+    $EMACS -Q -l $* &
     emacs_process_pid=$!
 }
 

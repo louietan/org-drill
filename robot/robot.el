@@ -9,8 +9,17 @@
 (setq debug-on-error t)
 (setq debug-on-quit t)
 
+(defun robot-file (file)
+  (concat top-dir "robot/" file))
+
 (defun clean (file)
-  (delete-file (concat top-dir "robot/" file)))
+  (delete-file (robot-file file)))
+
+(defun copy (from to)
+  (copy-file (robot-file from) (robot-file to) t))
+
+(defun find (file)
+  (find-file (robot-file file)))
 
 ;; Clean up
 (clean "failure.txt")

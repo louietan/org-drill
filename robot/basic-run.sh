@@ -43,4 +43,3 @@ launch_emacs $this_dir/basic-run.el
 
     wait_emacs
 } || cat robot/failure.txt
-    $EMACS -Q -l $1 &
