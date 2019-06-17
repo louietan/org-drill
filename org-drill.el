@@ -727,23 +727,6 @@ regardless of whether the test was successful.")
 value."
   `(setq ,place (append ,place (list ,val))))
 
-
-(defun shuffle-list (list)
-  "Randomly permute the elements of LIST (all permutations equally likely)."
-  ;; Adapted from 'shuffle-vector' in cookie1.el
-  (let ((i 0)
-        j
-        temp
-        (len (length list)))
-    (while (< i len)
-      (setq j (+ i (cl-random (- len i))))
-      (setq temp (nth i list))
-      (setf (nth i list) (nth j list))
-      (setf (nth j list) temp)
-      (setq i (1+ i))))
-  list)
-
-
 (defun round-float (floatnum fix)
   "Round the floating point number FLOATNUM to FIX decimal places.
 Example: (round-float 3.56755765 3) -> 3.568"
@@ -2204,7 +2187,7 @@ Note: does not actually alter the item."
 
 
 
-(defun org-drill-present-multi-sided-card ()
+(defun org-drill-present-multi-sided-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
     (with-hidden-cloze-text
@@ -2262,9 +2245,10 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
       (if (cl-minusp number-to-hide)
           (setq number-to-hide (+ match-count number-to-hide)))
       (when (cl-plusp match-count)
-        (let* ((positions (shuffle-list (loop for i from 1
-                                              to match-count
-                                              collect i)))
+        (let* ((positions (org-drill-shuffle
+                           (cl-loop for i from 1
+                                 to match-count
+                                 collect i)))
                (match-nums nil)
                (cnt nil))
           (if force-hide-first
@@ -2305,7 +2289,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
         (org-drill-unhide-clozed-text))))))
 
 
-(defun org-drill-present-multicloze-hide-nth (to-hide)
+(defun org-drill-present-multicloze-hide-nth (session to-hide)
   "Hide the TO-HIDE'th piece of clozed text. 1 is the first piece. If
 TO-HIDE is negative, count backwards, so -1 means the last item, -2
 the second to last, etc."
@@ -2359,29 +2343,29 @@ the second to last, etc."
         (org-drill-unhide-clozed-text))))))
 
 
-(defun org-drill-present-multicloze-hide1 ()
+(defun org-drill-present-multicloze-hide1 (session)
   "Hides one of the pieces of text that are marked for cloze deletion,
 chosen at random."
-  (org-drill-present-multicloze-hide-n 1))
+  (org-drill-present-multicloze-hide-n session 1))
 
 
-(defun org-drill-present-multicloze-hide2 ()
+(defun org-drill-present-multicloze-hide2 (session)
   "Hides two of the pieces of text that are marked for cloze deletion,
 chosen at random."
-  (org-drill-present-multicloze-hide-n 2))
+  (org-drill-present-multicloze-hide-n session 2))
 
 
-(defun org-drill-present-multicloze-hide-first ()
+(defun org-drill-present-multicloze-hide-first (session)
   "Hides the first piece of text that is marked for cloze deletion."
-  (org-drill-present-multicloze-hide-nth 1))
+  (org-drill-present-multicloze-hide-nth session 1))
 
 
-(defun org-drill-present-multicloze-hide-last ()
+(defun org-drill-present-multicloze-hide-last (session)
   "Hides the last piece of text that is marked for cloze deletion."
-  (org-drill-present-multicloze-hide-nth -1))
+  (org-drill-present-multicloze-hide-nth session -1))
 
 
-(defun org-drill-present-multicloze-hide1-firstmore ()
+(defun org-drill-present-multicloze-hide1-firstmore (session)
   "Commonly, hides the FIRST piece of text that is marked for
 cloze deletion. Uncommonly, hide one of the other pieces of text,
 chosen at random.
@@ -2405,13 +2389,13 @@ the value of `org-drill-cloze-text-weight'."
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
                 org-drill-cloze-text-weight))
     ;; Uncommonly, hide any item except the first
-    (org-drill-present-multicloze-hide-n 1 t))
+    (org-drill-present-multicloze-hide-n session 1 t))
    (t
     ;; Commonly, hide first item
-    (org-drill-present-multicloze-hide-first))))
+    (org-drill-present-multicloze-hide-first session))))
 
 
-(defun org-drill-present-multicloze-show1-lastmore ()
+(defun org-drill-present-multicloze-show1-lastmore (session)
   "Commonly, hides all pieces except the last. Uncommonly, shows
 any random piece. The effect is similar to 'show1cloze' except
 that the last item is much less likely to be the item that is
@@ -2430,13 +2414,13 @@ the value of `org-drill-cloze-text-weight'."
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
                 org-drill-cloze-text-weight))
     ;; Uncommonly, show any item except the last
-    (org-drill-present-multicloze-hide-n -1 nil nil t))
+    (org-drill-present-multicloze-hide-n session -1 nil nil t))
    (t
     ;; Commonly, show the LAST item
-    (org-drill-present-multicloze-hide-n -1 nil t))))
+    (org-drill-present-multicloze-hide-n session -1 nil t))))
 
 
-(defun org-drill-present-multicloze-show1-firstless ()
+(defun org-drill-present-multicloze-show1-firstless (session)
   "Commonly, hides all pieces except one, where the shown piece
 is guaranteed NOT to be the first piece. Uncommonly, shows any
 random piece. The effect is similar to 'show1cloze' except that
@@ -2456,23 +2440,23 @@ the value of `org-drill-cloze-text-weight'."
    ((zerop (mod (1+ (org-drill-entry-total-repeats 0))
                 org-drill-cloze-text-weight))
     ;; Uncommonly, show the first item
-    (org-drill-present-multicloze-hide-n -1 t))
+    (org-drill-present-multicloze-hide-n session -1 t))
    (t
     ;; Commonly, show any item, except the first
-    (org-drill-present-multicloze-hide-n -1 nil nil t))))
+    (org-drill-present-multicloze-hide-n session -1 nil nil t))))
 
 
-(defun org-drill-present-multicloze-show1 ()
+(defun org-drill-present-multicloze-show1 (session)
   "Similar to `org-drill-present-multicloze-hide1', but hides all
 the pieces of text that are marked for cloze deletion, except for one
 piece which is chosen at random."
-  (org-drill-present-multicloze-hide-n -1))
+  (org-drill-present-multicloze-hide-n session -1))
 
 
-(defun org-drill-present-multicloze-show2 ()
+(defun org-drill-present-multicloze-show2 (session)
   "Similar to `org-drill-present-multicloze-show1', but reveals two
 pieces rather than one."
-  (org-drill-present-multicloze-hide-n -2))
+  (org-drill-present-multicloze-hide-n session -2))
 
 
 (defun org-drill-present-card-using-text (session question &optional answer)
@@ -2731,7 +2715,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
                ((<= result org-drill-failure-quality)
                 (if (oref session again-entries)
                     (setf (oref session again-entries)
-                          (shuffle-list (oref session again-entries))))
+                          (org-drill-shuffle (oref session again-entries))))
                 (push-end m (oref session again-entries)))
                (t
                 (push m (oref session done-entries))))
@@ -2866,7 +2850,7 @@ all the markers used by Org-Drill will be freed."
     (setf (oref session overdue-entries)
           (mapcar 'first
                   (append
-                   (sort (shuffle-list not-lapsed)
+                   (sort (org-drill-shuffle not-lapsed)
                          (lambda (a b) (> (cl-second a) (cl-second b))))
                    (sort lapsed
                          (lambda (a b) (> (cl-third a) (cl-third b)))))))))
@@ -3894,7 +3878,7 @@ Returns a list of strings."
 (defun org-drill-shuffle (LIST)
   "Shuffle the elements in LIST.
 shuffling is done in place."
-  (loop for i in (reverse (number-sequence 1 (1- (length LIST))))
+  (cl-loop for i in (reverse (number-sequence 1 (1- (length LIST))))
         do (let ((j (random (+ i 1))))
              (org-drill-swap LIST i j)))
   LIST)

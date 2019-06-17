@@ -39,4 +39,8 @@ basic-robot-test:
 	$(CASK) clean-elc
 	$(EMACS_ENV) ./robot/basic-run.sh
 
+all-card-robot-test:
+	$(CASK) clean-elc
+	$(EMACS_ENV) ./robot/all-card-run.sh
+
 .PHONY: test

@@ -1,0 +1,133 @@
+
+* Simple Topic                                                        :drill:
+
+This is the simple topic body
+
+** Answer
+
+This is the simple topic body answer
+
+
+* Simple Clozed                                                       :drill:
+
+This is the [clozed] text
+
+* Clozed Text Hints                                                   :drill:
+
+This is [clozed||with a text hint]
+
+* Two Sided                                                           :drill:
+  :PROPERTIES:
+  :DRILL_CARD_TYPE: twosided
+  :END:
+ 
+This is the two sided body
+
+** First Side
+
+This is the first side of the two side
+
+** Second Second
+
+This is the other side of the two side
+
+** Answer
+
+This shows the answer
+
+
+* Multi-sided Card                                                    :drill:
+  :PROPERTIES:
+  :DRILL_CARD_TYPE: multisided
+  :END:
+
+This is the body of the multisided
+
+** Side One
+
+This is the first body of the multisided
+
+** Side Two
+
+This is the second body of the multisided
+
+** Side Three
+
+This is the third body of the multisided
+
+
+* Multi-cloze
+
+There are lots of multicloze types
+
+** hide1cloze                                                         :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: hide1cloze
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+hide1cloze
+
+
+** show1cloze                                                         :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: show1cloze
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+show1cloze
+
+** hide2cloze                                                         :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: hide2cloze
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+hide2cloze
+
+** show2cloze                                                         :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: show2cloze
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+show2cloze
+
+** hide1_firstmore                                                    :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: hide1_firstmore
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+hide1_firstmore
+
+** show1_firstless                                                    :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: show1_firstless
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+show1_firstless
+
+** show1_lastmore                                                     :drill:
+   :PROPERTIES:
+   :DRILL_CARD_TYPE: show1_lastmore
+   :END:
+
+This is the body of a multiclozed card:
+[one][two][three][four][five][six]
+
+show1_lastmore
+
