@@ -7,7 +7,7 @@ window_id=
 
 ## This is the small sleep between key presses. Change for debugging
 ## when you are not sure what is happening
-small_sleep=0.25
+small_sleep=0.1
 big_sleep=1
 
 emacs_process_pid=

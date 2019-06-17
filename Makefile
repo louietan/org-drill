@@ -35,12 +35,18 @@ docker-test:
 	$(MAKE) test-git DOCKER_TAG=25.3
 	$(MAKE) test-cp DOCKER_TAG=25.3
 
-basic-robot-test:
+clean-elc:
 	$(CASK) clean-elc
+
+all-robot-test: basic-robot-test leitner-robot-test all-card-robot-test
+
+basic-robot-test: clean-elc
 	$(EMACS_ENV) ./robot/basic-run.sh
 
-all-card-robot-test:
-	$(CASK) clean-elc
+leitner-robot-test: clean-elc
+	$(EMACS_ENV) ./robot/leitner-run.sh
+
+all-card-robot-test: clean-elc
 	$(EMACS_ENV) ./robot/all-card-run.sh
 
 .PHONY: test

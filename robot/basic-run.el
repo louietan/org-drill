@@ -2,8 +2,8 @@
 (load-file "org-drill.el")
 
 (defun org-drill-do-drill ()
-  (copy "main-test.org" "main-test-copy.org")
-  (find "main-test-copy.org")
+  (copy "basic-run.org" "basic-run-copy.org")
+  (find "basic-run-copy.org")
 
   (org-drill)
   (set-buffer-modified-p nil)

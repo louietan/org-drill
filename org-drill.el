@@ -1774,7 +1774,7 @@ Consider reformulating the item to make it easier to remember.\n"
 (defun org-drill-response-rtn ()
   (interactive)
   (let ((session org-drill-current-session))
-    (setf (oref session drill-typed-answer) (buffer-string))
+    (setf (oref session typed-answer) (buffer-string))
     (oset session exit-kind t)
     (org-drill-response-complete)))
 
@@ -3829,6 +3829,7 @@ Returns a list of strings."
   (interactive)
   (let ((org-drill-leitner-boxed-entries nil)
         (org-drill-leitner-unboxed-entries nil)
+        (session (setq org-drill-last-session (org-drill-session)))
         (count 0))
     (org-drill-all-leitner-capture)
     ;; make sure we have enough (or at least the maximum number we
@@ -3848,7 +3849,7 @@ Returns a list of strings."
           (seq-map
            (lambda (loc)
              (org-drill-goto-entry loc)
-             (let ((r (org-drill-leitner-entry)))
+             (let ((r (org-drill-leitner-entry session)))
                ;; short circuit if necessary
                (unless (eq t r)
                  (throw 'user-exit (list r loc)))))
@@ -3939,7 +3940,9 @@ shuffling is done in place."
 (defun org-drill-leitner-entry (session)
   "Interactive drill for the current entry."
   (let ((org-drill-question-tag org-drill-leitner-tag))
-    (org-drill-entry-f (apply-partially #'org-drill-leitner-rebox session))))
+    (org-drill-entry-f
+     session
+     (apply-partially #'org-drill-leitner-rebox session))))
 
 (defun org-drill-leitner-rebox (session)
   "Returns quality rating (0-5), or nil if the user quit."
