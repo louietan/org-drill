@@ -708,7 +708,7 @@ regardless of whether the test was successful.")
 ;;;; Utilities ================================================================
 
 
-(defun free-marker (m)
+(defun org-drill-free-marker (m)
   (set-marker m nil))
 
 
@@ -2828,7 +2828,7 @@ all the markers used by Org-Drill will be freed."
                           (oref session young-mature-entries)
                           (oref session old-mature-entries))
                markers))
-    (free-marker m)))
+    (org-drill-free-marker m)))
 
 
 ;;; overdue-data is a list of entries, each entry has the form (POS DUE AGE)
@@ -3165,7 +3165,7 @@ scan will be performed."
      ((cl-plusp (org-drill-pending-entry-count session))
       (org-drill-free-markers session (oref session done-entries))
       (if (markerp (oref session current-item))
-          (free-marker (oref session current-item)))
+          (org-drill-free-marker (oref session current-item)))
       (setf (oref session start-time) (float-time (current-time)))
       (setf (oref session done-entries) nil
             (oref session current-item) nil)
@@ -3386,7 +3386,7 @@ copy them across."
                      (if scheduled-time
                          (org-schedule nil scheduled-time)))))
                (remhash id *org-drill-dest-id-table*)
-               (free-marker marker)))
+               (org-drill-free-marker marker)))
             (t
              ;; item in SRC has ID, but no matching ID in DEST.
              ;; It must be a new item that does not exist in DEST.
@@ -3401,7 +3401,7 @@ copy them across."
       (maphash (lambda (id m)
                  (goto-char m)
                  (org-drill-strip-entry-data)
-                 (free-marker m))
+                 (org-drill-free-marker m))
                *org-drill-dest-id-table*))))
 
 
