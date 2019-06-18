@@ -708,7 +708,7 @@ regardless of whether the test was successful.")
   (set-marker m nil))
 
 
-(defmacro pop-random (place)
+(defmacro org-drill-pop-random (place)
   (let ((idx (gensym)))
     `(if (null ,place)
          nil
@@ -718,12 +718,12 @@ regardless of whether the test was successful.")
                                 (cl-subseq ,place (1+ ,idx)))))))))
 
 
-(defmacro push-end (val place)
+(defmacro org-drill-push-end (val place)
   "Add VAL to the end of the sequence stored in PLACE. Return the new
 value."
   `(setq ,place (append ,place (list ,val))))
 
-(defun round-float (floatnum fix)
+(defun org-drill-round-float (floatnum fix)
   "Round the floating point number FLOATNUM to FIX decimal places.
 Example: (round-float 3.56755765 3) -> 3.568"
   (let ((n (expt 10 fix)))
@@ -1079,14 +1079,14 @@ in the matrix."
   "Stores the given data in the item at point."
   (org-entry-delete (point) "LEARN_DATA")
   (org-set-property "DRILL_LAST_INTERVAL"
-                    (number-to-string (round-float last-interval 4)))
+                    (number-to-string (org-drill-round-float last-interval 4)))
   (org-set-property "DRILL_REPEATS_SINCE_FAIL" (number-to-string repeats))
   (org-set-property "DRILL_TOTAL_REPEATS" (number-to-string total-repeats))
   (org-set-property "DRILL_FAILURE_COUNT" (number-to-string failures))
   (org-set-property "DRILL_AVERAGE_QUALITY"
-                    (number-to-string (round-float meanq 3)))
+                    (number-to-string (org-drill-round-float meanq 3)))
   (org-set-property "DRILL_EASE"
-                    (number-to-string (round-float ease 3))))
+                    (number-to-string (org-drill-round-float ease 3))))
 
 
 
@@ -1218,7 +1218,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 
     (setq of-matrix
           (set-optimal-factor n next-ef of-matrix
-                              (round-float new-of 3))) ; round OF to 3 d.p.
+                              (org-drill-round-float new-of 3))) ; round OF to 3 d.p.
 
     (setq ef next-ef)
 
@@ -2625,7 +2625,7 @@ maximum number of items."
           ((and (oref session failed-entries)
                 (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
-           (pop-random (oref session failed-entries)))
+           (org-drill-pop-random (oref session failed-entries)))
           ;; Next priority is overdue items.
           ((and (oref session overdue-entries)
                 (not (org-drill-maximum-item-count-reached-p session))
@@ -2638,7 +2638,7 @@ maximum number of items."
           ((and (oref session young-mature-entries)
                 (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
-           (pop-random (oref session young-mature-entries)))
+           (org-drill-pop-random (oref session young-mature-entries)))
           ;; Next priority is newly added items, and older entries.
           ;; We pool these into a single group.
           ((and (or (oref session new-entries)
@@ -2649,9 +2649,9 @@ maximum number of items."
             ((< (cl-random (+ (length (oref session new-entries))
                               (length (oref session old-mature-entries))))
                 (length (oref session new-entries)))
-             (pop-random (oref session new-entries)))
+             (org-drill-pop-random (oref session new-entries)))
             (t
-             (pop-random (oref session old-mature-entries)))))
+             (org-drill-pop-random (oref session old-mature-entries)))))
           ;; After all the above are done, last priority is items
           ;; that were failed earlier THIS SESSION.
           ((oref session again-entries)
@@ -2712,7 +2712,7 @@ RESUMING-P is true if we are resuming a suspended drill session."
                 (if (oref session again-entries)
                     (setf (oref session again-entries)
                           (org-drill-shuffle (oref session again-entries))))
-                (push-end m (oref session again-entries)))
+                (org-drill-push-end m (oref session again-entries)))
                (t
                 (push m (oref session done-entries))))
               (setf (oref session current-item) nil))))))))))
