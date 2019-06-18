@@ -14,6 +14,8 @@ install:
 
 test: install just-test
 
+all-test: all-robot-test test
+
 robot-and-test: basic-robot-test just-test
 
 just-test:

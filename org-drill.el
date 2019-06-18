@@ -572,16 +572,6 @@ exponential effect on inter-repetition spacing."
   :group 'org-drill
   :type 'boolean)
 
-(defvar drill-answer nil
-  "Global variable that can be bound to a correct answer when an
-item is being presented. If this variable is non-nil, the default
-presentation function will show its value instead of the default
-behaviour of revealing the contents of the drilled item.
-
-This variable is useful for card types that compute their answers
--- for example, a card type that asks the student to translate a
-random number to another language. ")
-
 (defvar org-drill-display-answer-hook nil)
 
 (defcustom org-drill-cloze-length-matches-hidden-text-p
@@ -641,7 +631,16 @@ for review unless they were already reviewed in the recent past?"
    (typed-answer
     :initform nil
     :documentation "The last answer typed by the user.")
-   )
+   (drill-answer
+    :initform nil
+    :documentation "The correct answer when an item is being
+presented. If this variable is non-nil, the default presentation
+function will show its value instead of the default behaviour of
+revealing the contents of the drilled item.
+
+This variable is useful for card types that compute their answers
+-- for example, a card type that asks the student to translate a
+random number to another language."))
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
@@ -783,6 +782,7 @@ CMD is bound, or nil if it is not bound to a key."
 
 
 (defmacro with-hidden-cloze-hints (&rest body)
+  (declare (debug t))
   `(progn
      (org-drill-hide-cloze-hints)
      (unwind-protect
@@ -2126,12 +2126,12 @@ Note: does not actually alter the item."
        (org-drill-hide-subheadings-if 'org-drill-entry-p))))))
 
 
-(defun org-drill-present-default-answer (reschedule-fn)
+(defun org-drill-present-default-answer (session reschedule-fn)
   (prog1 (cond
-          (drill-answer
+          ((oref session drill-answer)
            (with-replaced-entry-text
-            (format "\nAnswer:\n\n  %s\n" drill-answer)
-            (funcall reschedule-fn)
+            (format "\nAnswer:\n\n  %s\n" (oref session drill-answer))
+            (funcall reschedule-fn session)
             ))
           (t
            (org-drill-hide-subheadings-if 'org-drill-entry-p)
@@ -2141,9 +2141,7 @@ Note: does not actually alter the item."
              (org-display-inline-images t))
            (org-cycle-hide-drawers 'all)
            (with-hidden-cloze-hints
-            (funcall reschedule-fn))))
-    (setq drill-answer nil
-          drill-typed-answer nil)))
+            (funcall reschedule-fn session))))))
 
 
 (defun org-drill-present-simple-card-with-typed-answer ()
@@ -2459,8 +2457,8 @@ pieces rather than one."
 
 (defun org-drill-present-card-using-text (session question &optional answer)
   "Present the string QUESTION as the only visible content of the card.
-If ANSWER is supplied, set the global variable `drill-answer' to its value."
-  (if answer (setq drill-answer answer))
+If ANSWER is supplied, set the session slot `drill-answer' to its value."
+  (if answer (setf (oref session drill-answer) answer))
   (with-hidden-comments
    (with-replaced-entry-text
     (concat "\n" question)
@@ -2476,8 +2474,8 @@ If ANSWER is supplied, set the global variable `drill-answer' to its value."
   "TEXTS is a list of valid values for the 'display' text property.
 Present these overlays, in sequence, as the only
 visible content of the card.
-If ANSWER is supplied, set the global variable `drill-answer' to its value."
-  (if answer (setq drill-answer answer))
+If ANSWER is supplied, set the session slot `drill-answer' to its value."
+  (if answer (setf (oref session drill-answer) answer))
   (with-hidden-comments
    (with-replaced-entry-text-multi
     replacements
@@ -2500,7 +2498,7 @@ the latter option leaves the drill session suspended; it can be resumed
 later using `org-drill-resume'.
 
 See `org-drill' for more details."
-  (org-drill-entry-f session (apply-partially #'org-drill-reschedule session)))
+  (org-drill-entry-f session 'org-drill-reschedule))
 
 (defun org-drill-card-tag-caller (item tag)
   (funcall
@@ -2521,7 +2519,7 @@ See `org-drill' for more details."
         ;; fontification functions in `outline-view-change-hook' can cause big
         ;; slowdowns, so we temporarily bind this variable to nil here.
         (outline-view-change-hook nil))
-    (setq drill-answer nil)
+    (setf (oref session drill-answer) nil)
     (org-save-outline-visibility t
       (save-restriction
         (org-narrow-to-subtree)
@@ -2561,7 +2559,7 @@ See `org-drill' for more details."
                         (mapc
                          (apply-partially 'org-drill-card-tag-caller 2)
                          (org-get-tags))
-                        (funcall answer-fn complete-func))))))))
+                        (funcall answer-fn session complete-func))))))))
             (mapc
              (apply-partially 'org-drill-card-tag-caller 3)
              (org-get-tags))
@@ -3500,7 +3498,7 @@ and conjugate for the %s.\n\n"
                  (tense-and-mood-to-string tense mood))))))))
 
 
-(defun org-drill-show-answer-verb-conjugation (reschedule-fn)
+(defun org-drill-show-answer-verb-conjugation (session reschedule-fn)
   "Show the answer for a drill item whose card type is 'conjugate'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
@@ -3518,7 +3516,7 @@ returns its return value."
                 (format "%s mood" mood))))
              infinitive translation)
      (org-cycle-hide-drawers 'all)
-     (funcall reschedule-fn))))
+     (funcall reschedule-fn session))))
 
 
 ;;; `decline_noun' card type ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3604,7 +3602,7 @@ and list its declensions%s.\n\n"
                    ""))))))))
 
 
-(defun org-drill-show-answer-noun-declension (reschedule-fn)
+(defun org-drill-show-answer-noun-declension (session reschedule-fn)
   "Show the answer for a drill item whose card type is 'decline_noun'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
@@ -3614,7 +3612,7 @@ returns its return value."
      (format "Declensions of %s (%s) ==> %s\n\n"
              noun noun-gender translation)
      (org-cycle-hide-drawers 'all)
-     (funcall reschedule-fn))))
+     (funcall reschedule-fn session))))
 
 
 ;;; `translate_number' card type ==============================================
@@ -3940,9 +3938,7 @@ shuffling is done in place."
 (defun org-drill-leitner-entry (session)
   "Interactive drill for the current entry."
   (let ((org-drill-question-tag org-drill-leitner-tag))
-    (org-drill-entry-f
-     session
-     (apply-partially #'org-drill-leitner-rebox session))))
+    (org-drill-entry-f session #'org-drill-leitner-rebox)))
 
 (defun org-drill-leitner-rebox (session)
   "Returns quality rating (0-5), or nil if the user quit."
