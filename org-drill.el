@@ -730,24 +730,17 @@ Example: (round-float 3.56755765 3) -> 3.568"
     (/ (float (round (* floatnum n))) n)))
 
 
-(defun command-keybinding-to-string (cmd)
+(defun org-drill-command-keybinding-to-string (cmd)
   "Return a human-readable description of the key/keys to which the command
 CMD is bound, or nil if it is not bound to a key."
   (let ((key (where-is-internal cmd overriding-local-map t)))
     (if key (key-description key))))
 
 
-(defun time-to-inactive-org-timestamp (time)
+(defun org-drill-time-to-inactive-org-timestamp (time)
   (format-time-string
    (concat "[" (substring (cdr org-time-stamp-formats) 1 -1) "]")
    time))
-
-
-(defun time-to-active-org-timestamp (time)
-  (format-time-string
-   (concat "<" (substring (cdr org-time-stamp-formats) 1 -1) ">")
-   time))
-
 
 (defun org-map-drill-entries (func &optional scope drill-match &rest skip)
   "Like `org-map-entries', but only drill entries are processed."
@@ -1549,7 +1542,7 @@ of QUALITY."
                 (sit-for 0.5)))))
           (org-set-property "DRILL_LAST_QUALITY" (format "%d" quality))
           (org-set-property "DRILL_LAST_REVIEWED"
-                            (time-to-inactive-org-timestamp (current-time))))
+                            (org-drill-time-to-inactive-org-timestamp (current-time))))
         quality))
      ((= ch org-drill--edit-key)
       'edit)
@@ -3098,7 +3091,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
         (org-drill-goto-entry end-pos)
         (org-reveal)
         (org-show-entry))
-      (let ((keystr (command-keybinding-to-string 'org-drill-resume)))
+      (let ((keystr (org-drill-command-keybinding-to-string 'org-drill-resume)))
         (message
          "You can continue the drill session with the command `org-drill-resume'.%s"
          (if keystr (format "\nYou can run this command by pressing %s." keystr)
