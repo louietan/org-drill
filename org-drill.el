@@ -742,7 +742,7 @@ CMD is bound, or nil if it is not bound to a key."
    (concat "[" (substring (cdr org-time-stamp-formats) 1 -1) "]")
    time))
 
-(defun org-map-drill-entries (func &optional scope drill-match &rest skip)
+(defun org-drill-map-entries (func &optional scope drill-match &rest skip)
   "Like `org-map-entries', but only drill entries are processed."
   (let ((org-drill-scope (or scope org-drill-scope))
         (org-drill-match (or drill-match org-drill-match)))
@@ -999,15 +999,6 @@ from the entry at point."
                    (sign p)))
          100.0))))
 
-(defun pseudonormal (mean variation)
-  "Random numbers in a pseudo-normal distribution with mean MEAN, range
-    MEAN-VARIATION to MEAN+VARIATION"
-  (+  (cl-random variation)
-      (cl-random variation)
-      (- variation)
-      mean))
-
-
 (defun org-drill-early-interval-factor (optimal-factor
                                                 optimal-interval
                                                 days-ahead)
@@ -1086,7 +1077,7 @@ in the matrix."
 ;;; SM2 Algorithm =============================================================
 
 
-(defun determine-next-interval-sm2 (last-interval n ef quality
+(defun org-drill-determine-next-interval-sm2 (last-interval n ef quality
                                                   failures meanq total-repeats)
   "Arguments:
 - LAST-INTERVAL -- the number of days since the item was last reviewed.
@@ -1372,7 +1363,7 @@ item will be scheduled exactly this many days into the future."
             (sm5 (determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats ofmatrix))
-            (sm2 (determine-next-interval-sm2 last-interval repetitions
+            (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats))
             (simple8 (determine-next-interval-simple8 last-interval repetitions
@@ -1424,7 +1415,7 @@ of QUALITY."
                                               ease quality failures
                                               meanq total-repeats
                                               org-drill-sm5-optimal-factor-matrix))
-            (sm2 (determine-next-interval-sm2 last-interval repetitions
+            (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats))
             (simple8 (determine-next-interval-simple8 last-interval repetitions
@@ -3059,7 +3050,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
           (save-excursion
             (unless resume-p
               (let ((org-trust-scanner-tags t))
-                (org-map-drill-entries
+                (org-drill-map-entries
                  (apply-partially #'org-map-drill-entry-function session)
                  scope drill-match)
                 (org-drill-order-overdue-entries session)
@@ -3213,9 +3204,9 @@ values as `org-drill-scope'."
       ;; `org-delete-property-globally', which is faster.
       (dolist (prop org-drill-scheduling-properties)
         (org-delete-property-globally prop))
-      (org-map-drill-entries (lambda () (org-schedule '(4))) scope))
+      (org-drill-map-entries (lambda () (org-schedule '(4))) scope))
      (t
-      (org-map-drill-entries 'org-drill-strip-entry-data scope)))
+      (org-drill-map-entries 'org-drill-strip-entry-data scope)))
     (message "Done.")))
 
 
@@ -3267,7 +3258,7 @@ the tag 'imported'."
                                    (org-paste-subtree level)
                                    (org-drill-strip-entry-data)
                                    (org-toggle-tag "imported" 'on)
-                                   (org-map-drill-entries
+                                   (org-drill-map-entries
                                     (lambda ()
                                       (let ((id (org-id-get)))
                                         (org-drill-strip-entry-data)
@@ -3330,7 +3321,7 @@ copy them across."
     ;; Compile list of all IDs in the destination buffer.
     (clrhash *org-drill-dest-id-table*)
     (with-current-buffer dest
-      (org-map-drill-entries
+      (org-drill-map-entries
        (lambda ()
          (let ((this-id (org-id-get)))
            (when this-id
@@ -3338,7 +3329,7 @@ copy them across."
        'file))
     ;; Look through all entries in source buffer.
     (with-current-buffer src
-      (org-map-drill-entries
+      (org-drill-map-entries
        (lambda ()
          (let ((id (org-id-get))
                (last-quality nil) (last-reviewed nil)
@@ -3801,7 +3792,7 @@ Returns a list of strings."
     (unless (cl-plusp pending)
       (let ((cnt 0)
             (end-pos nil))
-        (org-map-drill-entries
+        (org-drill-map-entries
          (apply-partially 'org-map-drill-entry-function session)
          nil nil)))
     ;; if the overdue entries are not ones we have just created
@@ -4059,7 +4050,7 @@ shuffling is done in place."
        (org-drill-leitner-unboxed-entries nil)
        (org-drill-leitner-boxed-entries nil))
     (org-drill-all-leitner-capture)
-    (org-map-drill-entries
+    (org-drill-map-entries
      (lambda ()
        (setq number-drill-entries (+ 1 number-drill-entries)))
      org-drill-scope nil)
