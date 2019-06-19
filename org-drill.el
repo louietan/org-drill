@@ -1104,7 +1104,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
       (list -1 1 ef (1+ failures) meanq (1+ total-repeats)
             org-drill-sm5-optimal-factor-matrix)
     ;; else:
-    (let* ((next-ef (modify-e-factor ef quality))
+    (let* ((next-ef (org-drill-modify-e-factor ef quality))
            (interval
             (cond
              ((<= n 1) 1)
@@ -1131,16 +1131,16 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 
 ;;; SM5 Algorithm =============================================================
 
-(defun modify-e-factor (ef quality)
+(defun org-drill-modify-e-factor (ef quality)
   (if (< ef 1.3)
       1.3
     (+ ef (- 0.1 (* (- 5 quality) (+ 0.08 (* (- 5 quality) 0.02)))))))
 
-(defun modify-of (of q fraction)
+(defun org-drill-modify-of (of q fraction)
   (let ((temp (* of (+ 0.72 (* q 0.07)))))
     (+ (* (- 1 fraction) of) (* fraction temp))))
 
-(defun set-optimal-factor (n ef of-matrix of)
+(defun org-drill-set-optimal-factor (n ef of-matrix of)
   (let ((factors (assoc n of-matrix)))
     (if factors
 	(let ((ef-of (assoc ef (cdr factors))))
@@ -1150,12 +1150,12 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
       (push (cons n (list (cons ef of))) of-matrix)))
   of-matrix)
 
-(defun initial-optimal-factor-sm5 (n ef)
+(defun org-drill-initial-optimal-factor-sm5 (n ef)
   (if (= 1 n)
       org-drill-sm5-initial-interval
     ef))
 
-(defun get-optimal-factor-sm5 (n ef of-matrix)
+(defun org-drill-get-optimal-factor-sm5 (n ef of-matrix)
   (let ((factors (assoc n of-matrix)))
     (or (and factors
              (let ((ef-of (assoc ef (cdr factors))))
@@ -1164,7 +1164,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 
 
 (defun inter-repetition-interval-sm5 (last-interval n ef &optional of-matrix)
-  (let ((of (get-optimal-factor-sm5 n ef (or of-matrix
+  (let ((of (org-drill-get-optimal-factor-sm5 n ef (or of-matrix
                                              org-drill-sm5-optimal-factor-matrix))))
     (if (= 1 n)
         of
@@ -1187,21 +1187,21 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
                      (1+ total-repeats))
                 quality))
 
-  (let ((next-ef (modify-e-factor ef quality))
+  (let ((next-ef (org-drill-modify-e-factor ef quality))
         (old-ef ef)
-        (new-of (modify-of (get-optimal-factor-sm5 n ef of-matrix)
+        (new-of (org-drill-modify-of (org-drill-get-optimal-factor-sm5 n ef of-matrix)
                            quality org-drill-learn-fraction))
         (interval nil))
     (when (and org-drill-adjust-intervals-for-early-and-late-repetitions-p
                delta-days (cl-minusp delta-days))
       (setq new-of (org-drill-early-interval-factor
-                    (get-optimal-factor-sm5 n ef of-matrix)
+                    (org-drill-get-optimal-factor-sm5 n ef of-matrix)
                     (inter-repetition-interval-sm5
                      last-interval n ef of-matrix)
                     delta-days)))
 
     (setq of-matrix
-          (set-optimal-factor n next-ef of-matrix
+          (org-drill-set-optimal-factor n next-ef of-matrix
                               (org-drill-round-float new-of 3))) ; round OF to 3 d.p.
 
     (setq ef next-ef)
@@ -3634,17 +3634,17 @@ returns its return value."
         (org-drill-present-card-using-text
          (format "\nTranslate into English:\n\n%s\n"
                  (propertize
-                  (spelln-integer-in-language drilled-number language)
+                  (org-drill-spelln-integer-in-language drilled-number language)
                   'face highlight-face))
-         (spelln-integer-in-language drilled-number 'english-gb)))
+         (org-drill-spelln-integer-in-language drilled-number 'english-gb)))
        (t
         (org-drill-present-card-using-text
          (format "\nTranslate into %s:\n\n%s\n"
                  (capitalize (format "%s" language))
                  (propertize
-                  (spelln-integer-in-language drilled-number 'english-gb)
+                  (org-drill-spelln-integer-in-language drilled-number 'english-gb)
                   'face highlight-face))
-         (spelln-integer-in-language drilled-number language))))))))
+         (org-drill-spelln-integer-in-language drilled-number language))))))))
 
 
 ;; (defun org-drill-show-answer-translate-number (reschedule-fn)
