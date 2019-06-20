@@ -55,6 +55,7 @@
 (require 'cl-lib)
 (require 'hi-lock)
 (require 'org)
+(require 'org-agenda)
 (require 'org-id)
 (require 'savehist)
 (require 'seq)
@@ -911,13 +912,13 @@ drill entry."
            (time-to-days item-time))))))))
 
 
-(defun org-drill-entry-overdue-p (&optional days-overdue last-interval)
+(defun org-drill-entry-overdue-p (session &optional days-overdue last-interval)
   "Returns true if entry that is scheduled DAYS-OVERDUE dasy in the past,
 and whose last inter-repetition interval was LAST-INTERVAL, should be
 considered 'overdue'. If the arguments are not given they are extracted
 from the entry at point."
   (unless days-overdue
-    (setq days-overdue (org-drill-entry-days-overdue)))
+    (setq days-overdue (org-drill-entry-days-overdue session)))
   (unless last-interval
     (setq last-interval (org-drill-entry-last-interval 1)))
   (and (numberp days-overdue)
@@ -1160,7 +1161,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
     (or (and factors
              (let ((ef-of (assoc ef (cdr factors))))
                (and ef-of (cdr ef-of))))
-        (initial-optimal-factor-sm5 n ef))))
+        (org-drill-initial-optimal-factor-sm5 n ef))))
 
 
 (defun org-drill-inter-repetition-interval-sm5 (last-interval n ef &optional of-matrix)
@@ -1265,7 +1266,7 @@ to a mean item quality of QUALITY."
      1.4515))
 
 
-(defun determine-next-interval-simple8 (last-interval repeats quality
+(defun org-drill-determine-next-interval-simple8 (last-interval repeats quality
                                                       failures meanq totaln
                                                       &optional delta-days)
   "Arguments:
@@ -1512,7 +1513,7 @@ of QUALITY."
             (failures (org-drill-entry-failure-count)))
         (unless (oref session cram-mode)
           (save-excursion
-            (let ((quality (if (org-drill--entry-lapsed-p) 2 quality)))
+            (let ((quality (if (org-drill--entry-lapsed-p session) 2 quality)))
               (org-drill-smart-reschedule quality
                                           (nth quality next-review-dates))))
           (push quality (oref session qualities))
@@ -2361,7 +2362,7 @@ the value of `org-drill-cloze-text-weight'."
   (cond
    ((null org-drill-cloze-text-weight)
     ;; Behave as hide1cloze
-    (org-drill-present-multicloze-hide1))
+    (org-drill-present-multicloze-hide1 session))
    ((not (and (integerp org-drill-cloze-text-weight)
               (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
@@ -2386,7 +2387,7 @@ the value of `org-drill-cloze-text-weight'."
   (cond
    ((null org-drill-cloze-text-weight)
     ;; Behave as show1cloze
-    (org-drill-present-multicloze-show1))
+    (org-drill-present-multicloze-show1 session))
    ((not (and (integerp org-drill-cloze-text-weight)
               (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
@@ -2412,7 +2413,7 @@ the value of `org-drill-cloze-text-weight'."
   (cond
    ((null org-drill-cloze-text-weight)
     ;; Behave as show1cloze
-    (org-drill-present-multicloze-show1))
+    (org-drill-present-multicloze-show1 session))
    ((not (and (integerp org-drill-cloze-text-weight)
               (cl-plusp org-drill-cloze-text-weight)))
     (error "Illegal value for org-drill-cloze-text-weight: %S"
@@ -2836,10 +2837,11 @@ all the markers used by Org-Drill will be freed."
                          (lambda (a b) (> (cl-third a) (cl-third b)))))))))
 
 
-(defun org-drill--entry-lapsed-p ()
+(defun org-drill--entry-lapsed-p (session)
   (let ((lapsed-days 90))
     (and org-drill--lapse-very-overdue-entries-p
-         (> (or (org-drill-entry-days-overdue) 0) lapsed-days))))
+         (> (or (org-drill-entry-days-overdue session) 0)
+            lapsed-days))))
 
 
 
@@ -3455,7 +3457,7 @@ the name of the tense.")
     (list infinitive inf-hint translation tense mood)))
 
 
-(defun org-drill-present-verb-conjugation ()
+(defun org-drill-present-verb-conjugation (session)
   "Present a drill entry whose card type is 'conjugate'."
   (cl-flet ((tense-and-mood-to-string
              (tense mood)
@@ -3469,6 +3471,7 @@ the name of the tense.")
     (cl-destructuring-bind (infinitive inf-hint translation tense mood)
         (org-drill-get-verb-conjugation-info)
       (org-drill-present-card-using-text
+       session
        (cond
         ((zerop (cl-random 2))
          (format "\nTranslate the verb\n\n%s\n\nand conjugate for the %s.\n\n"
@@ -3549,7 +3552,7 @@ returns its return value."
     (list noun noun-root noun-gender noun-hint translation)))
 
 
-(defun org-drill-present-noun-declension ()
+(defun org-drill-present-noun-declension (session)
   "Present a drill entry whose card type is 'decline_noun'."
   (cl-destructuring-bind (noun noun-root noun-gender noun-hint translation)
       (org-drill-get-noun-info)
@@ -3569,6 +3572,7 @@ returns its return value."
                           'face 'warning))
              (t nil))))
       (org-drill-present-card-using-text
+       session
        (cond
         ((zerop (cl-random 2))
          (format "\nTranslate the noun\n\n%s (%s)\n\nand list its declensions%s.\n\n"
@@ -3603,7 +3607,7 @@ returns its return value."
 ;;; See spanish.org for usage
 
 
-(defun spelln-integer-in-language (n lang)
+(defun org-drill-spelln-integer-in-language (n lang)
   (let ((spelln-language lang))
     (spelln-integer-in-words n)))
 
@@ -3790,8 +3794,7 @@ Returns a list of strings."
   (let* ((session org-drill-last-session)
          (pending (org-drill-pending-entry-count session)))
     (unless (cl-plusp pending)
-      (let ((cnt 0)
-            (end-pos nil))
+      (let ((end-pos nil))
         (org-drill-map-entries
          (apply-partially 'org-drill-map-entry-function session)
          nil nil)))
@@ -3887,8 +3890,7 @@ shuffling is done in place."
 
 (defun org-drill-all-leitner-capture (&optional scope)
   "Capture all items marked with a leitner tag"
-  (let ((cnt 0)
-        (org-drill-question-tag org-drill-leitner-tag))
+  (let ((org-drill-question-tag org-drill-leitner-tag))
     (org-drill-map-leitner
      (apply-partially #'org-drill-map-leitner-capture (org-drill-session))
      scope)
@@ -4034,8 +4036,9 @@ shuffling is done in place."
   (org-toggle-tag "zysygy")
   (unwind-protect
       (let ((org-drill-question-tag "zysygy"))
-        (org-drill-entry-f #'org-drill-test-display-rescheduler))
-      (org-toggle-tag "zysygy")))
+        (org-drill-entry-f (org-drill-session)
+                           #'org-drill-test-display-rescheduler))
+    (org-toggle-tag "zysygy")))
 
 (defun org-drill-test-display-rescheduler ()
   (run-hooks 'org-drill-display-answer-hook)
@@ -4045,8 +4048,7 @@ shuffling is done in place."
 (defun org-drill-leitner-vs-drill-entries ()
   (interactive)
   (let
-      ((warned-about-id-creation nil)
-       (number-drill-entries 0)
+      ((number-drill-entries 0)
        (org-drill-leitner-unboxed-entries nil)
        (org-drill-leitner-boxed-entries nil))
     (org-drill-all-leitner-capture)
