@@ -1163,7 +1163,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
         (initial-optimal-factor-sm5 n ef))))
 
 
-(defun inter-repetition-interval-sm5 (last-interval n ef &optional of-matrix)
+(defun org-drill-inter-repetition-interval-sm5 (last-interval n ef &optional of-matrix)
   (let ((of (org-drill-get-optimal-factor-sm5 n ef (or of-matrix
                                              org-drill-sm5-optimal-factor-matrix))))
     (if (= 1 n)
@@ -1171,7 +1171,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
       (* of last-interval))))
 
 
-(defun determine-next-interval-sm5 (last-interval n ef quality
+(defun org-drill-determine-next-interval-sm5 (last-interval n ef quality
                                                   failures meanq total-repeats
                                                   of-matrix &optional delta-days)
   (if (zerop n) (setq n 1))
@@ -1196,7 +1196,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
                delta-days (cl-minusp delta-days))
       (setq new-of (org-drill-early-interval-factor
                     (org-drill-get-optimal-factor-sm5 n ef of-matrix)
-                    (inter-repetition-interval-sm5
+                    (org-drill-inter-repetition-interval-sm5
                      last-interval n ef of-matrix)
                     delta-days)))
 
@@ -1218,7 +1218,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
      ;;  (list 0 (1+ n) ef failures meanq
      ;;        (1+ total-repeats) of-matrix))     ; 0 interval = unschedule
      (t
-      (setq interval (inter-repetition-interval-sm5
+      (setq interval (org-drill-inter-repetition-interval-sm5
                       last-interval n ef of-matrix))
       (if org-drill-add-random-noise-to-intervals-p
           (setq interval (* interval (org-drill-random-dispersal-factor))))
@@ -1360,13 +1360,13 @@ item will be scheduled exactly this many days into the future."
                                          failures meanq total-repeats
                                          &optional new-ofmatrix)
           (cl-case org-drill-spaced-repetition-algorithm
-            (sm5 (determine-next-interval-sm5 last-interval repetitions
+            (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats ofmatrix))
             (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats))
-            (simple8 (determine-next-interval-simple8 last-interval repetitions
+            (simple8 (org-drill-determine-next-interval-simple8 last-interval repetitions
                                                       quality failures meanq
                                                       total-repeats
                                                       delta-days)))
@@ -1411,14 +1411,14 @@ of QUALITY."
                                          failures meanq total-repeats
                                          &optional ofmatrix)
           (cl-case org-drill-spaced-repetition-algorithm
-            (sm5 (determine-next-interval-sm5 last-interval repetitions
+            (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats
                                               org-drill-sm5-optimal-factor-matrix))
             (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
                                               ease quality failures
                                               meanq total-repeats))
-            (simple8 (determine-next-interval-simple8 last-interval repetitions
+            (simple8 (org-drill-determine-next-interval-simple8 last-interval repetitions
                                                       quality failures meanq
                                                       total-repeats)))
         (cond
@@ -2931,7 +2931,7 @@ STATUS is one of the following values:
                             sym1)))))
 
 
-(defun org-map-drill-entry-function (session)
+(defun org-drill-map-entry-function (session)
   (org-drill-progress-message
    (+ (length (oref session new-entries))
       (length (oref session overdue-entries))
@@ -3051,7 +3051,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
             (unless resume-p
               (let ((org-trust-scanner-tags t))
                 (org-drill-map-entries
-                 (apply-partially #'org-map-drill-entry-function session)
+                 (apply-partially #'org-drill-map-entry-function session)
                  scope drill-match)
                 (org-drill-order-overdue-entries session)
                 (setf (oref session overdue-entry-count)
@@ -3244,7 +3244,7 @@ values as `org-drill-scope'."
 ;;; Synching card collections =================================================
 
 
-(defvar *org-drill-dest-id-table* (make-hash-table :test 'equal))
+(defvar org-drill-dest-id-table (make-hash-table :test 'equal))
 
 
 (defun org-drill-copy-entry-to-other-buffer (dest &optional path)
@@ -3262,9 +3262,9 @@ the tag 'imported'."
                                     (lambda ()
                                       (let ((id (org-id-get)))
                                         (org-drill-strip-entry-data)
-                                        (unless (gethash id *org-drill-dest-id-table*)
+                                        (unless (gethash id org-drill-dest-id-table)
                                           (puthash id (point-marker)
-                                                   *org-drill-dest-id-table*))))
+                                                   org-drill-dest-id-table))))
                                     'tree)))
           (unless path
             (setq path (org-get-outline-path)))
@@ -3319,13 +3319,13 @@ copy them across."
                   "with information taken from matching items in `%s'. Proceed? ")
           (buffer-name dest) (buffer-name src)))
     ;; Compile list of all IDs in the destination buffer.
-    (clrhash *org-drill-dest-id-table*)
+    (clrhash org-drill-dest-id-table)
     (with-current-buffer dest
       (org-drill-map-entries
        (lambda ()
          (let ((this-id (org-id-get)))
            (when this-id
-             (puthash this-id (point-marker) *org-drill-dest-id-table*))))
+             (puthash this-id (point-marker) org-drill-dest-id-table))))
        'file))
     ;; Look through all entries in source buffer.
     (with-current-buffer src
@@ -3338,11 +3338,11 @@ copy them across."
             ((or (null id)
                  (not (org-drill-entry-p)))
              nil)
-            ((gethash id *org-drill-dest-id-table*)
+            ((gethash id org-drill-dest-id-table)
              ;; This entry matches an entry in dest. Retrieve all its
              ;; scheduling data, then go to the matching location in dest
              ;; and write the data.
-             (let ((marker (gethash id *org-drill-dest-id-table*)))
+             (let ((marker (gethash id org-drill-dest-id-table)))
                (cl-destructuring-bind (last-interval repetitions failures
                                                   total-repeats meanq ease)
                    (org-drill-get-item-data)
@@ -3365,7 +3365,7 @@ copy them across."
                        (org-delete-property "LAST_REVIEWED"))
                      (if scheduled-time
                          (org-schedule nil scheduled-time)))))
-               (remhash id *org-drill-dest-id-table*)
+               (remhash id org-drill-dest-id-table)
                (org-drill-free-marker marker)))
             (t
              ;; item in SRC has ID, but no matching ID in DEST.
@@ -3382,7 +3382,7 @@ copy them across."
                  (goto-char m)
                  (org-drill-strip-entry-data)
                  (org-drill-free-marker m))
-               *org-drill-dest-id-table*))))
+               org-drill-dest-id-table))))
 
 
 
@@ -3793,7 +3793,7 @@ Returns a list of strings."
       (let ((cnt 0)
             (end-pos nil))
         (org-drill-map-entries
-         (apply-partially 'org-map-drill-entry-function session)
+         (apply-partially 'org-drill-map-entry-function session)
          nil nil)))
     ;; if the overdue entries are not ones we have just created
     (if (> (org-drill-pending-entry-count session) org-drill-leitner-completed)
@@ -3899,7 +3899,7 @@ shuffling is done in place."
 
 (defun org-drill-map-leitner-capture (session)
   "Capture this entry if it is a valid leitner entry"
-  ;; This bit is all rather shared with org-map-drill-entry-function
+  ;; This bit is all rather shared with org-drill-map-entry-function
   (org-drill-progress-message
    (+ (length org-drill-leitner-unboxed-entries)
       (length org-drill-leitner-boxed-entries))
