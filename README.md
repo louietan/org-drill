@@ -965,3 +965,7 @@ Paul did email me and tell me that he was happy with this, but I have
 subsequently been unable to get access to the original project; as
 suggested in the original issue, I have moved to git because I am more
 familiar with it.
+
+Currently, I am refactoring org-drill significantly. It's quite hard
+to test all of its functionality automatically, so I expect
+breakages. Please be patient and report problems!
