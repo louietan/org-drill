@@ -2074,7 +2074,7 @@ Note: does not actually alter the item."
 ;;   (zerop (length (org-drill-get-entry-text))))
 
 ;; This version is about 5x faster than the old version, above.
-(defun org-entry-empty-p ()
+(defun org-drill-entry-empty-p ()
   (save-excursion
     (org-back-to-heading t)
     (let ((lim (save-excursion
@@ -2084,9 +2084,6 @@ Note: does not actually alter the item."
         (org-end-of-meta-data t))
       (or (>= (point) lim)
           (null (re-search-forward "[[:graph:]]" lim t))))))
-
-(defun org-drill-entry-empty-p () (org-entry-empty-p))
-
 
 ;;; Presentation functions ====================================================
 ;;
@@ -2453,24 +2450,6 @@ If ANSWER is supplied, set the session slot `drill-answer' to its value."
       (org-display-inline-images t))
     (prog1 (org-drill-presentation-prompt session)
       (org-drill-hide-subheadings-if 'org-drill-entry-p)))))
-
-
-(defun org-drill-present-card-using-multiple-overlays (session replacements &optional answer)
-  "TEXTS is a list of valid values for the 'display' text property.
-Present these overlays, in sequence, as the only
-visible content of the card.
-If ANSWER is supplied, set the session slot `drill-answer' to its value."
-  (if answer (setf (oref session drill-answer) answer))
-  (with-hidden-comments
-   (with-replaced-entry-text-multi
-    replacements
-    (org-drill-hide-all-subheadings-except nil)
-    (org-cycle-hide-drawers 'all)
-    (ignore-errors
-      (org-display-inline-images t))
-    (prog1 (org-drill-presentation-prompt session)
-      (org-drill-hide-subheadings-if 'org-drill-entry-p)))))
-
 
 (defun org-drill-entry (session)
   "Present the current topic for interactive review, as in `org-drill'.
@@ -2884,7 +2863,7 @@ STATUS is one of the following values:
        (cond
         ((not (org-drill-entry-p))
          nil)
-        ((and (org-entry-empty-p)
+        ((and (org-drill-entry-empty-p)
               (let* ((card-type (org-entry-get (point) "DRILL_CARD_TYPE" nil))
                     (dat (cdr (assoc card-type org-drill-card-type-alist))))
                 (or (null card-type)
