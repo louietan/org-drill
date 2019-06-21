@@ -25,7 +25,7 @@ source $this_dir/robot.sh
 launch_emacs $this_dir/leitner-run.el
 
 {
-    sleep 2
+    sleep 1
     find_bot
 
     ## Run once with default options

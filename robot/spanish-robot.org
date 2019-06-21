@@ -1,0 +1,334 @@
+# -*- mode: org; coding: utf-8 -*-
+#+STARTUP: showall
+
+# examples of card definitions for use with org-drill.
+# Cards, AKA topics, have the 'drill' tag. Note that the higher-level headings
+# in the file do NOT have this tag.
+
+* Spanish questions
+
+** Greetings
+
+# Simple cards. When each card is presented, all subheadings are collapsed, but
+# the text under the topic's main heading remains visible.
+
+*** Greeting 1                                       :drill:
+
+Translate into Spanish:
+What is your name? (formal)
+
+**** Answer
+
+¿Cómo se llama usted?
+
+**** Notes
+
+llamar = to be named
+
+*** Greeting 2                                       :drill:
+
+Translate into Spanish:
+What is your name? (informal)
+
+**** Answer
+
+¿Cómo te llamas?
+
+**** Notes
+
+llamar = to be named
+
+
+** Grammar rules 1
+
+# More simple cards -- here the question and answer are produced purely using
+# cloze deletion of test in [square brackets], without the need to hide any
+# subtopics (though they WILL still be hidden if present).
+
+# If the text between the brackets contains a `|' character, everything after
+# that character is considered to be a `hint', and will remain visible when the
+# rest of the clozed text is hidden.
+
+# Set the variable `org-drill-use-visible-cloze-face-p' to `t' if you want
+# cloze-deleted text to be shown in a special face when you are editing org
+# mode buffers.
+
+*** Grammar Rule                                     :drill:
+
+To form the plural of a noun ending in a consonant, add [-es] to the end.
+
+*** Grammar Rule                                     :drill:
+
+To make the plural of an adjective ending in [a stressed vowel or a consonant
+other than -z], add /-es/.
+
+** Grammar rules 2
+
+# An example of a 'hide1cloze' card. One of the areas marked with square
+# brackets will be hidden (chosen at random), the others will remain visible.
+
+# This card also illustrates the use of hints inside clozed text. Note how
+# during testing, the hint text `gender' is invisible unless its clozed text
+# area is being hidden, in which case that text is replaced by `[gender...]'
+
+*** Grammar Rule                                     :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: hide1cloze
+    :END:
+
+To form [an adverb] from an adjective, add [-mente] to the [feminine|gender]
+form of the adjective.
+
+** Vocabulary
+
+# Examples of 'twosided' cards. These are 'flip cards' where one of the
+# first 2 'sides' (subheadings) is presented at random, while all others stay
+# hidden.
+
+# There is another builtin card type called 'multisided'. These are like
+# 'twosided' cards, but can have any number of sides. So we could extend the
+# examples below by changing their type to multisided and adding a third
+# subheading which contains an inline image.
+
+
+*** Noun                                             :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: twosided
+    :END:
+
+Translate this word.
+
+**** Spanish
+
+el gato
+
+**** English
+
+the cat
+
+**** Example sentence
+
+*El gato* se sentó en la estera.
+*The cat* sat on the mat.
+
+
+*** Noun                                             :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: hide1cloze
+    :END:
+
+Sp: [el perro]
+En: [the dog]
+
+**** Example sentence
+
+Cuidado con *el perro*.
+Beware of *the dog*.
+
+
+*** Noun                                             :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: multisided
+    :END:
+
+**** Spanish
+
+la manzana
+
+**** English
+
+the apple
+
+**** Picture
+
+The Spanish word for...
+
+[[file:apple.jpg][Picture]]
+
+
+*** Adjective                                        :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: twosided
+    :END:
+
+Translate this word.
+
+**** Spanish
+
+caliente
+
+**** English
+
+hot
+
+**** Example sentence
+
+El agua está muy caliente.
+The water is very hot.
+
+
+** Verbs
+
+[[Regular Verb: bailar][Below]] is an example of a complex drill item. The main item is itself a drill
+item which tests your ability to translate 'bailar' to and from English (which
+direction is chosen at random).
+
+The item has several child items, some of which contain notes about the verb,
+others of which are separate drill items relating to the verb. In this example,
+all of the child drill items test verb conjugation, and have the 'conjugate'
+card type. Which tense to test is specified by the =VERB_TENSE= property in
+each item, and the information about the verb is retrieved from the parent's
+=VERB_INFINITIVE=, =VERB_TRANSLATION= and =VERB_INFINITIVE_HINT= properties.
+
+Some of the conjugation items are empty -- this allows the user to paste in
+conjugations as they are learned. They will automatically be excluded from
+drill sessions as long as their bodies remain empty.
+
+Following this item is an [[Old Style Verb][example]] of the older "spanish_verb" card type. This
+is not as sophisticated or useful as the first example, but is intended to
+demonstrate how a function can control which subheadings are visible when an
+item is tested.
+
+
+*** Regular Verb: bailar                                            :verb:drill:
+  :PROPERTIES:
+  :VERB_INFINITIVE: "bailar"
+  :VERB_TRANSLATION: "to dance"
+  :DRILL_CARD_TYPE: hide1cloze
+  :DATE_ADDED: [2011-04-30 Sat]
+  :VERB_INFINITIVE_HINT: "b..."
+  :END:
+
+Sp:  [bailar]
+En:  [to dance] (verb)
+
+**** Notes
+
+This is a regular verb.
+
+**** Examples
+
+Bailé con mi novia.
+I danced with my girlfriend.
+
+**** Simple present tense                                           :verb:drill:
+     :PROPERTIES:
+     :VERB_TENSE: "simple present"
+     :DRILL_CARD_TYPE: conjugate
+     :END:
+
+| yo            | bailo    |
+| tú            | bailas   |
+| él/usted      | baila    |
+| nosotros      | bailamos |
+| vosotros      | bailáis  |
+| ellos/ustedes | bailan   |
+
+**** Participles                                                    :verb:drill:
+Present participle of bailar:  [bailando]
+Past participle of bailar:     [bailado]
+
+**** Preterite tense                                                :verb:drill:
+     :PROPERTIES:
+     :VERB_TENSE: "preterite"
+     :DRILL_CARD_TYPE: conjugate
+     :END:
+
+| yo            | bailé      |
+| tú            | bailaste   |
+| él/usted      | bailó      |
+| nosotros      | bailamos   |
+| vosotros      | bailasteis |
+| ellos/ustedes | bailaron   |
+
+**** Imperfect tense                                                :verb:drill:
+     :PROPERTIES:
+     :VERB_TENSE: "imperfect"
+     :DRILL_CARD_TYPE: conjugate
+     :END:
+
+**** Future tense                                                   :verb:drill:
+    :PROPERTIES:
+    :VERB_TENSE: "future"
+    :DRILL_CARD_TYPE: conjugate
+    :END:
+
+
+*** Old Style Verb                                                       :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: spanish_verb
+    :END:
+
+**** Infinitive
+
+cantar
+
+**** English
+
+to sing
+
+**** Present Tense
+
+| yo canto  | nosotros cantamos |
+| tú cantas | vosotros cantáis  |
+| él canta  | ellos cantan      |
+
+**** Past Tense
+
+| yo canté    | nosotros cantamos   |
+| tú cantaste | vosotros cantasteis |
+| él cantó    | ellos cantaron      |
+
+**** Future Perfect Tense
+
+| yo cantaré  | nosotros cantaremos |
+| tú cantarás | vosotros cantaréis  |
+| él cantarán | ellos cantarán      |
+
+
+**** Notes
+
+Regular verb.
+
+
+** Sentences
+
+
+It is generally a lot harder for language students to translate /to/ the
+foreign language, than to translate /from/ it. This is because when you see a
+sentence in the foreign language, you can often get the sense of the sentence
+by recognising the nouns and verbs; once this is achieved, combining them into
+a grammatically correct sentence in your native tongue is automatic and
+effortless. However, in the other direction, not only do you have to recall the
+correct nouns, verbs and so on, but you also have to put the words in the right
+order and get all the grammar and "in-between words" correct.
+
+Therefore, if you are learning a language you should generally test your
+ability to translate into the language, more often than you test your ability
+in the other direction.
+
+The following is an example of the card type =hide1_firstmore=. This card type
+works like =hide1cloze= but the /first/ clozed text area is guaranteed to be
+hidden 75% of the time.
+
+The second example is of a similar card type, =show1_firstless=. Here only 1
+clozed text area is visible during testing. 75% of the time, the /first/ area
+is guaranteed to be one of the hidden areas.
+
+
+*** Sentence                                                             :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: hide1_firstmore
+    :END:
+
+Sp:  [La mujer cuyo perro estamos buscando es mi jefe.]
+En:  [The woman whose dog we’re seeking is my boss.]
+
+*** Adverb                                                               :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: show1_firstless
+    :END:
+
+Sp:  [entre]
+En:  [between] or [among]
+

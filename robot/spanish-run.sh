@@ -6,7 +6,7 @@ this_dir="$(dirname "$0")"
 source $this_dir/robot.sh
 
 
-card_no=12
+card_no=15
 small_sleep=0.1
 
 
@@ -30,7 +30,7 @@ function run_drill {
     key y
 }
 
-launch_emacs $this_dir/all-card-run.el $card_no
+launch_emacs $this_dir/spanish-run.el
 
 {
     sleep 1

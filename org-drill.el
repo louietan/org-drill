@@ -3590,7 +3590,7 @@ returns its return value."
   (let ((spelln-language lang))
     (spelln-integer-in-words n)))
 
-(defun org-drill-present-translate-number ()
+(defun org-drill-present-translate-number (session)
   (let ((num-min (read (org-entry-get (point) "DRILL_NUMBER_MIN")))
         (num-max (read (org-entry-get (point) "DRILL_NUMBER_MAX")))
         (language (read (org-entry-get (point) "DRILL_LANGUAGE" t)))
