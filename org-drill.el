@@ -641,7 +641,8 @@ revealing the contents of the drilled item.
 
 This variable is useful for card types that compute their answers
 -- for example, a card type that asks the student to translate a
-random number to another language."))
+random number to another language.")
+   (end-pos :initform nil))
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
@@ -2662,10 +2663,10 @@ RESUMING-P is true if we are resuming a suspended drill session."
             (cond
              ((null result)
               (message "Quit")
-              (setq end-pos :quit)
+              (setf (oref session end-pos) :quit)
               (cl-return-from org-drill-entries nil))
              ((eql result 'edit)
-              (setq end-pos (point-marker))
+              (setf (oref session end-pos) (point-marker))
               (cl-return-from org-drill-entries nil))
              ((eql result 'skip)
               (setf (oref session current-item) nil)
@@ -3009,7 +3010,6 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
              org-drill-last-session
            (setq org-drill-last-session
                  (org-drill-session))))
-        (end-pos nil)
         (cnt 0))
     (cl-block org-drill
       (unless resume-p
@@ -3054,13 +3054,13 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               (message nil)
               )))
         (progn
-          (unless end-pos
+          (unless (oref session end-pos)
             (setf (oref session cram-mode) nil)
             (org-drill-free-markers session (oref session done-entries))))))
     (cond
-     (end-pos
-      (when (markerp end-pos)
-        (org-drill-goto-entry end-pos)
+     ((oref session end-pos)
+      (when (markerp (oref session end-pos))
+        (org-drill-goto-entry (oref session end-pos))
         (org-reveal)
         (org-show-entry))
       (let ((keystr (org-drill-command-keybinding-to-string 'org-drill-resume)))
@@ -3773,10 +3773,9 @@ Returns a list of strings."
   (let* ((session org-drill-last-session)
          (pending (org-drill-pending-entry-count session)))
     (unless (cl-plusp pending)
-      (let ((end-pos nil))
-        (org-drill-map-entries
-         (apply-partially 'org-drill-map-entry-function session)
-         nil nil)))
+      (org-drill-map-entries
+       (apply-partially 'org-drill-map-entry-function session)
+       nil nil))
     ;; if the overdue entries are not ones we have just created
     (if (> (org-drill-pending-entry-count session) org-drill-leitner-completed)
         ;; we should have scanned previously if we need to
