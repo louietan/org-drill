@@ -3590,7 +3590,7 @@ returns its return value."
   (let ((spelln-language lang))
     (spelln-integer-in-words n)))
 
-(defun org-drill-present-translate-number (session)
+(defun org-drill-present-translate-number (_session)
   (let ((num-min (read (org-entry-get (point) "DRILL_NUMBER_MIN")))
         (num-max (read (org-entry-get (point) "DRILL_NUMBER_MAX")))
         (language (read (org-entry-get (point) "DRILL_LANGUAGE" t)))
@@ -3659,45 +3659,55 @@ returns its return value."
 
 
 (defun org-drill-present-spanish-verb (session)
-  (let ((prompt nil)
-        (reveal-headings nil))
+  (let ((prompt nil))
     (with-hidden-comments
      (with-hidden-cloze-hints
       (with-hidden-cloze-text
        (cl-case (cl-random 6)
+         ;; PWL 2018-06-22
+         ;; As far as I can tell, neither prompt nor reveal-headings
+         ;; do anything here. They never seem to appear anyway. But
+         ;; this might be because I broke things when cleaning up the
+         ;; dynamic binding.
          (0
           (org-drill-hide-all-subheadings-except '("Infinitive"))
           (setq prompt
                 (concat "Translate this Spanish verb, and conjugate it "
                         "for the *present* tense.")
-                reveal-headings '("English" "Present Tense" "Notes")))
+                ;;reveal-headings '("English" "Present Tense" "Notes")
+                ))
          (1
           (org-drill-hide-all-subheadings-except '("English"))
           (setq prompt (concat "For the *present* tense, conjugate the "
                                "Spanish translation of this English verb.")
-                reveal-headings '("Infinitive" "Present Tense" "Notes")))
+                ;;reveal-headings '("Infinitive" "Present Tense" "Notes")
+                ))
          (2
           (org-drill-hide-all-subheadings-except '("Infinitive"))
           (setq prompt (concat "Translate this Spanish verb, and "
                                "conjugate it for the *past* tense.")
-                reveal-headings '("English" "Past Tense" "Notes")))
+                ;;reveal-headings '("English" "Past Tense" "Notes")
+                ))
          (3
           (org-drill-hide-all-subheadings-except '("English"))
           (setq prompt (concat "For the *past* tense, conjugate the "
                                "Spanish translation of this English verb.")
-                reveal-headings '("Infinitive" "Past Tense" "Notes")))
+                ;;reveal-headings '("Infinitive" "Past Tense" "Notes")
+                ))
          (4
           (org-drill-hide-all-subheadings-except '("Infinitive"))
           (setq prompt (concat "Translate this Spanish verb, and "
                                "conjugate it for the *future perfect* tense.")
-                reveal-headings '("English" "Future Perfect Tense" "Notes")))
+                ;;reveal-headings '("English" "Future Perfect Tense" "Notes")
+                ))
          (5
           (org-drill-hide-all-subheadings-except '("English"))
           (setq prompt (concat "For the *future perfect* tense, conjugate the "
                                "Spanish translation of this English verb.")
-                reveal-headings '("Infinitive" "Future Perfect Tense" "Notes"))))
+                ;;reveal-headings '("Infinitive" "Future Perfect Tense" "Notes")
+                )))
        (org-cycle-hide-drawers 'all)
-       (prog1 (org-drill-presentation-prompt session)
+       (prog1 (org-drill-presentation-prompt session prompt)
          (org-drill-hide-subheadings-if 'org-drill-entry-p)))))))
 
 
