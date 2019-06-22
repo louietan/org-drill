@@ -1803,14 +1803,10 @@ Consider reformulating the item to make it easier to remember.\n"
          (last-second 0)
          (prompt
           (format (concat "Type answer then return, "
-                          "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit.")
-                  org-drill--edit-key
-                  org-drill--tags-key
-                  org-drill--skip-key
-                  org-drill--quit-key))
+                          "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit.")))
          (full-prompt
           (org-drill--make-minibuffer-prompt session prompt)))
-    (setq drill-typed-answer nil)
+    (setf (oref session drill-typed-answer) nil)
     (if (and (eql 'warn org-drill-leech-method)
              (org-drill-entry-leech-p))
         (setq full-prompt (concat
