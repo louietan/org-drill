@@ -43,15 +43,15 @@ clean-elc:
 all-robot-test: basic-robot-test leitner-robot-test all-card-robot-test spanish-robot-test
 
 basic-robot-test: clean-elc
-	$(EMACS_ENV) ./robot/basic-run.sh
+	$(EMACS_ENV) ./robot/basic-run.sh $(SMALL)
 
 leitner-robot-test: clean-elc
-	$(EMACS_ENV) ./robot/leitner-run.sh
+	$(EMACS_ENV) ./robot/leitner-run.sh $(SMALL)
 
 all-card-robot-test: clean-elc
-	$(EMACS_ENV) ./robot/all-card-run.sh
+	$(EMACS_ENV) ./robot/all-card-run.sh $(SMALL)
 
 spanish-robot-test: clean-elc
-	$(EMACS_ENV) ./robot/spanish-run.sh
+	$(EMACS_ENV) ./robot/spanish-run.sh $(SMALL)
 
 .PHONY: test

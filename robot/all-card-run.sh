@@ -7,8 +7,6 @@ source $this_dir/robot.sh
 
 
 card_no=12
-small_sleep=0.1
-
 
 function run_drill {
     ## Org-drill should be running at this point, so give three answers
