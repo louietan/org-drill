@@ -2938,7 +2938,7 @@ STATUS is one of the following values:
         (:new
          (push (point-marker) (oref session new-entries)))
         (:failed
-         (push (point-marker) (oref failed-entries)))
+         (push (point-marker) (oref session failed-entries)))
         (:young
          (push (point-marker) (oref session young-mature-entries)))
         (:overdue
