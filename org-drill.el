@@ -2479,7 +2479,6 @@ See `org-drill' for more details."
   ;;  (org-back-to-heading))
   (let ((card-type (org-entry-get (point) "DRILL_CARD_TYPE" t))
         (answer-fn 'org-drill-present-default-answer)
-        (present-empty-cards nil)
         (cont nil)
         ;; fontification functions in `outline-view-change-hook' can cause big
         ;; slowdowns, so we temporarily bind this variable to nil here.
@@ -2496,7 +2495,6 @@ See `org-drill' for more details."
           (if (listp presentation-fn)
               (cl-psetq answer-fn (or (cl-second presentation-fn)
                                    'org-drill-present-default-answer)
-                     present-empty-cards (cl-third presentation-fn)
                      presentation-fn (cl-first presentation-fn)))
           (let* ((tags (org-get-tags))
                  (rtn
@@ -2509,7 +2507,7 @@ See `org-drill' for more details."
                    (t
                     (mapc
                      (apply-partially 'org-drill-card-tag-caller 1)
-                     (org-get-tags))
+                     tags)
                     (setq cont (funcall presentation-fn session))
                     (cond
                      ((not cont)
@@ -2523,11 +2521,11 @@ See `org-drill' for more details."
                       (save-excursion
                         (mapc
                          (apply-partially 'org-drill-card-tag-caller 2)
-                         (org-get-tags))
+                         tags)
                         (funcall answer-fn session complete-func))))))))
             (mapc
              (apply-partially 'org-drill-card-tag-caller 3)
-             (org-get-tags))
+             tags)
             (cl-incf org-drill-cards-in-this-emacs)
             (org-remove-latex-fragment-image-overlays)
             rtn))))))
