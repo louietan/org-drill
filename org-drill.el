@@ -1837,7 +1837,7 @@ Consider reformulating the item to make it easier to remember.\n"
         (org-drill-presentation-timer-cancel)
         (oref session exit-kind)))))
 
-(cl-defun org-drill-presentation-prompt-for-string (prompt)
+(cl-defun org-drill-presentation-prompt-for-string (session prompt)
   "Create a card prompt with a timer and user-specified menu.
 
 Arguments:
@@ -1862,7 +1862,8 @@ You seem to be having a lot of trouble memorising this item.
 Consider reformulating the item to make it easier to remember.\n"
                                        'face '(:foreground "red"))
                            full-prompt)))
-    (setq drill-typed-answer (read-string full-prompt nil nil nil t))))
+    (setf (oref session drill-typed-answer)
+          (read-string full-prompt nil nil nil t))))
 
 
 (defun org-pos-in-regexp (pos regexp &optional nlines)
@@ -2127,7 +2128,7 @@ Note: does not actually alter the item."
             (funcall reschedule-fn session))))))
 
 
-(defun org-drill-present-simple-card-with-typed-answer ()
+(defun org-drill-present-simple-card-with-typed-answer (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
     (with-hidden-cloze-text
@@ -2136,7 +2137,7 @@ Note: does not actually alter the item."
      (ignore-errors
        (org-display-inline-images t))
      (org-cycle-hide-drawers 'all)
-     (prog1 (org-drill-presentation-prompt-for-string nil)
+     (prog1 (org-drill-presentation-prompt-for-string session nil)
        (org-drill-hide-subheadings-if 'org-drill-entry-p))))))
 
 
