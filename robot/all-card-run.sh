@@ -31,7 +31,6 @@ function run_drill {
 launch_emacs $this_dir/all-card-run.el $card_no
 
 {
-    sleep 1
     find_bot
 
     ## Run once with default options

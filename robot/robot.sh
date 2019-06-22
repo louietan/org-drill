@@ -69,10 +69,16 @@ function wait_emacs {
 }
 
 function find_bot {
-    window_id=`xdotool search --name "emacs-bot"`
-    if [ -z "$window_id" ]
-    then
-        echo "Could not find window ID for Emacs-bot"
-        exit 1
-    fi
+    for i in `seq 1 20`;
+    do
+        window_id=`xdotool search --name "emacs-bot"`
+        if [ -z "$window_id" ]
+        then
+            sleep 0.1
+        else
+            return
+        fi
+    done
+    echo "Could not find window ID for Emacs-bot"
+    exit 1
 }

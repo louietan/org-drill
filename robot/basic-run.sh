@@ -5,7 +5,7 @@ set -e
 function run_drill {
     ## Org-drill should be running at this point, so give three answers
     ## with a score of file
-    sleep_big
+    sleep_small
 
     echo answer one
     send_answer
@@ -19,7 +19,6 @@ function run_drill {
     ## Press any key to continue
     echo press any key to continue
     retn
-    sleep_small
 
     echo Save file
     key y
@@ -32,7 +31,6 @@ source $this_dir/robot.sh
 launch_emacs $this_dir/basic-run.el
 
 {
-    sleep 1
     find_bot
 
     ## Run once with default options

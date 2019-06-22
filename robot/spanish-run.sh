@@ -31,7 +31,6 @@ function run_drill {
 launch_emacs $this_dir/spanish-run.el
 
 {
-    sleep 1
     find_bot
 
     ## Run once with default options
