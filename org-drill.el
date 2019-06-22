@@ -3140,20 +3140,20 @@ scan will be performed."
   "Resume a suspended drill session. Sessions are suspended by
 exiting them with the `edit' or `quit' options."
   (interactive)
-  (let ((session org-drill-last-session)))
-  (cond
-   ((org-drill-entries-pending-p session)
-    (org-drill nil nil t))
-   ((and (cl-plusp (org-drill-pending-entry-count session))
-         ;; Current drill session is finished, but there are still
-         ;; more items which need to be reviewed.
-         (y-or-n-p (format
-                    "You have finished the drill session. However, %d items still
+  (let ((session org-drill-last-session))
+    (cond
+     ((org-drill-entries-pending-p session)
+      (org-drill nil nil t))
+     ((and (cl-plusp (org-drill-pending-entry-count session))
+           ;; Current drill session is finished, but there are still
+           ;; more items which need to be reviewed.
+           (y-or-n-p (format
+                      "You have finished the drill session. However, %d items still
 need reviewing. Start a new drill session? "
-                    (org-drill-pending-entry-count session))))
-    (org-drill-again))
-   (t
-    (message "You have finished the drill session."))))
+                      (org-drill-pending-entry-count session))))
+      (org-drill-again))
+     (t
+      (message "You have finished the drill session.")))))
 
 
 (defun org-drill-relearn-item ()
