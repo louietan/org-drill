@@ -2938,7 +2938,7 @@ STATUS is one of the following values:
         (:new
          (push (point-marker) (oref session new-entries)))
         (:failed
-         (push (point-marker) *org-drill-failed-entries*))
+         (push (point-marker) (oref failed-entries)))
         (:young
          (push (point-marker) (oref session young-mature-entries)))
         (:overdue
@@ -3009,8 +3009,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
          (if resume-p
              org-drill-last-session
            (setq org-drill-last-session
-                 (org-drill-session))))
-        (cnt 0))
+                 (org-drill-session)))))
     (cl-block org-drill
       (unless resume-p
         (org-drill-free-markers session t)
