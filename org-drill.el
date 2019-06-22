@@ -3233,8 +3233,7 @@ values as `org-drill-scope'."
 the tag 'imported'."
   (cl-block org-drill-copy-entry-to-other-buffer
     (save-excursion
-      (let ((src (current-buffer))
-            (m nil))
+      (let ((m nil))
         (cl-flet ((paste-tree-here (&optional level)
                                    (org-paste-subtree level)
                                    (org-drill-strip-entry-data)
@@ -3359,7 +3358,7 @@ copy them across."
     ;; which have been scheduled by another user of DEST. Clear out the
     ;; scheduling info from all the unmatched items in DEST.
     (with-current-buffer dest
-      (maphash (lambda (id m)
+      (maphash (lambda (_id m)
                  (goto-char m)
                  (org-drill-strip-entry-data)
                  (org-drill-free-marker m))
@@ -3463,7 +3462,7 @@ and conjugate for the %s.\n\n"
   "Show the answer for a drill item whose card type is 'conjugate'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
-  (cl-destructuring-bind (infinitive inf-hint translation tense mood)
+  (cl-destructuring-bind (infinitive _inf-hint translation tense mood)
       (org-drill-get-verb-conjugation-info)
     (with-replaced-entry-heading
      (format "%s of %s ==> %s\n\n"
@@ -3528,7 +3527,7 @@ returns its return value."
 
 (defun org-drill-present-noun-declension (session)
   "Present a drill entry whose card type is 'decline_noun'."
-  (cl-destructuring-bind (noun noun-root noun-gender noun-hint translation)
+  (cl-destructuring-bind (noun _noun-root noun-gender noun-hint translation)
       (org-drill-get-noun-info)
     (let* ((props (org-entry-properties (point)))
            (definite
@@ -3568,7 +3567,7 @@ and list its declensions%s.\n\n"
   "Show the answer for a drill item whose card type is 'decline_noun'.
 RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
-  (cl-destructuring-bind (noun noun-root noun-gender noun-hint translation)
+  (cl-destructuring-bind (noun _noun-root noun-gender _noun-hint translation)
       (org-drill-get-noun-info)
     (with-replaced-entry-heading
      (format "Declensions of %s (%s) ==> %s\n\n"
