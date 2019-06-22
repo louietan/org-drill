@@ -77,7 +77,7 @@ by `org-drill'."
 
 (defcustom org-drill-maximum-items-per-session
   30
-  "Each drill session will present at most this many topics for review.
+  "Eaqch drill session will present at most this many topics for review.
 Nil means unlimited."
   :group 'org-drill
   :type '(choice integer (const nil)))
@@ -1798,15 +1798,12 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (defun org-drill-presentation-prompt-in-buffer (session)
   (let* ((item-start-time (current-time))
-         (input nil)
-         (ch nil)
-         (last-second 0)
          (prompt
           (format (concat "Type answer then return, "
                           "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit.")))
          (full-prompt
           (org-drill--make-minibuffer-prompt session prompt)))
-    (setf (oref session drill-typed-answer) nil)
+    (setf (oref session drill-answer) nil)
     (if (and (eql 'warn org-drill-leech-method)
              (org-drill-entry-leech-p))
         (setq full-prompt (concat
@@ -1858,7 +1855,7 @@ You seem to be having a lot of trouble memorising this item.
 Consider reformulating the item to make it easier to remember.\n"
                                        'face '(:foreground "red"))
                            full-prompt)))
-    (setf (oref session drill-typed-answer)
+    (setf (oref session drill-answer)
           (read-string full-prompt nil nil nil t))))
 
 
@@ -3098,13 +3095,11 @@ subtree at point."
   (interactive)
   (org-drill 'tree))
 
-
 (defun org-drill-directory ()
   "Run an interactive drill session using drill items from all org
 files in the same directory as the current file."
   (interactive)
   (org-drill 'directory))
-
 
 (defun org-drill-again (&optional scope drill-match)
   "Run a new drill session, but try to use leftover due items that

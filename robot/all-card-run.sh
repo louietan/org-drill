@@ -36,6 +36,5 @@ launch_emacs $this_dir/all-card-run.el $card_no
     ## Run once with default options
     run_drill
 
-
     wait_emacs
 } || cat robot/failure.txt

@@ -48,6 +48,8 @@
 (defun robot-dump ()
   (dump-buffer "*Backtrace*" "failure.txt")
   (dump-buffer "*Messages*" "messages.txt")
+  (princ "Killing Emacs after error\n"
+         'external-debugging-output)
   (kill-emacs -1))
 
 (defun robot-dump-messages ()

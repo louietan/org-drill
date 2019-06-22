@@ -65,7 +65,7 @@ function retn {
 }
 
 function wait_emacs {
-    wait $emacs_process_pid
+    wait $emacs_process_pid || exit 1
 }
 
 function find_bot {
