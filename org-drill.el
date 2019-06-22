@@ -2659,28 +2659,28 @@ RESUMING-P is true if we are resuming a suspended drill session."
             nil)
            (t
             (org-show-entry)
-            (setq result (org-drill-entry session))
-            (cond
-             ((null result)
-              (message "Quit")
-              (setf (oref session end-pos) :quit)
-              (cl-return-from org-drill-entries nil))
-             ((eql result 'edit)
-              (setf (oref session end-pos) (point-marker))
-              (cl-return-from org-drill-entries nil))
-             ((eql result 'skip)
-              (setf (oref session current-item) nil)
-              nil)                      ; skip this item
-             (t
+            (let ((result (org-drill-entry session)))
               (cond
-               ((<= result org-drill-failure-quality)
-                (if (oref session again-entries)
-                    (setf (oref session again-entries)
-                          (org-drill-shuffle (oref session again-entries))))
-                (org-drill-push-end m (oref session again-entries)))
+               ((null result)
+                (message "Quit")
+                (setf (oref session end-pos) :quit)
+                (cl-return-from org-drill-entries nil))
+               ((eql result 'edit)
+                (setf (oref session end-pos) (point-marker))
+                (cl-return-from org-drill-entries nil))
+               ((eql result 'skip)
+                (setf (oref session current-item) nil)
+                nil)                      ; skip this item
                (t
-                (push m (oref session done-entries))))
-              (setf (oref session current-item) nil))))))))))
+                (cond
+                 ((<= result org-drill-failure-quality)
+                  (if (oref session again-entries)
+                      (setf (oref session again-entries)
+                            (org-drill-shuffle (oref session again-entries))))
+                  (org-drill-push-end m (oref session again-entries)))
+                 (t
+                  (push m (oref session done-entries))))
+                (setf (oref session current-item) nil)))))))))))
 
 
 
