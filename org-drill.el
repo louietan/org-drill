@@ -2903,7 +2903,7 @@ STATUS is one of the following values:
 (defun org-drill-progress-message (collected scanned)
   (when (zerop (% scanned 50))
     (let* ((meter-width 40)
-           (sym1 (if (oddp (floor scanned (* 50 meter-width))) ?| ?.))
+           (sym1 (if (cl-oddp (floor scanned (* 50 meter-width))) ?| ?.))
            (sym2 (if (eql sym1 ?.) ?| ?.)))
       (message "Collecting due drill items:%4d %s%s"
                collected
