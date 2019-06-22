@@ -71,11 +71,12 @@ function wait_emacs {
 function find_bot {
     for i in `seq 1 20`;
     do
-        window_id=`xdotool search --name "emacs-bot"`
+        window_id=`xdotool search --onlyvisible --name "emacs-bot" 2> /dev/null`
         if [ -z "$window_id" ]
         then
             sleep 0.1
         else
+            echo "Found Emacs-Bot on $i-th poll"
             return
         fi
     done
