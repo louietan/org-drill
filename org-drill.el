@@ -2142,9 +2142,7 @@ Note: does not actually alter the item."
 
 (defun org-drill--show-latex-fragments ()
   (org-remove-latex-fragment-image-overlays)
-  (if (fboundp 'org-toggle-latex-fragment)
-      (org-toggle-latex-fragment '(4))
-    (org-preview-latex-fragment '(4))))
+  (org-toggle-latex-fragment '(4)))
 
 
 (defun org-drill-present-two-sided-card (session)
