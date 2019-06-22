@@ -3369,11 +3369,6 @@ copy them across."
 
 ;;; Card types for learning languages =========================================
 
-;;; Get spell-number.el from:
-;;; http://www.emacswiki.org/emacs/spell-number.el
-(autoload 'spelln-integer-in-words "spell-number")
-
-
 ;;; `conjugate' card type =====================================================
 ;;; See spanish.org for usage
 
@@ -3580,77 +3575,6 @@ returns its return value."
              noun noun-gender translation)
      (org-cycle-hide-drawers 'all)
      (funcall reschedule-fn session))))
-
-
-;;; `translate_number' card type ==============================================
-;;; See spanish.org for usage
-
-
-(defun org-drill-spelln-integer-in-language (n lang)
-  (let ((spelln-language lang))
-    (spelln-integer-in-words n)))
-
-(defun org-drill-present-translate-number (_session)
-  (let ((num-min (read (org-entry-get (point) "DRILL_NUMBER_MIN")))
-        (num-max (read (org-entry-get (point) "DRILL_NUMBER_MAX")))
-        (language (read (org-entry-get (point) "DRILL_LANGUAGE" t)))
-        (drilled-number 0)
-        (drilled-number-direction 'to-english)
-        (highlight-face 'font-lock-warning-face))
-    (cond
-     ((not (fboundp 'spelln-integer-in-words))
-      (message "`spell-number.el' not loaded, skipping 'translate_number' card...")
-      (sit-for 0.5)
-      'skip)
-     ((not (and (numberp num-min) (numberp num-max) language))
-      (error "Missing language or minimum or maximum numbers for number card"))
-     (t
-      (if (> num-min num-max)
-          (psetf num-min num-max
-                 num-max num-min))
-      (setq drilled-number
-            (+ num-min (cl-random (abs (1+ (- num-max num-min))))))
-      (setq drilled-number-direction
-            (if (zerop (cl-random 2)) 'from-english 'to-english))
-      (cond
-       ((eql 'to-english drilled-number-direction)
-        (org-drill-present-card-using-text
-         (format "\nTranslate into English:\n\n%s\n"
-                 (propertize
-                  (org-drill-spelln-integer-in-language drilled-number language)
-                  'face highlight-face))
-         (org-drill-spelln-integer-in-language drilled-number 'english-gb)))
-       (t
-        (org-drill-present-card-using-text
-         (format "\nTranslate into %s:\n\n%s\n"
-                 (capitalize (format "%s" language))
-                 (propertize
-                  (org-drill-spelln-integer-in-language drilled-number 'english-gb)
-                  'face highlight-face))
-         (org-drill-spelln-integer-in-language drilled-number language))))))))
-
-
-;; (defun org-drill-show-answer-translate-number (reschedule-fn)
-;;   (let* ((language (read (org-entry-get (point) "DRILL_LANGUAGE" t)))
-;;          (highlight-face 'font-lock-warning-face)
-;;          (non-english
-;;           (let ((spelln-language language))
-;;             (propertize (spelln-integer-in-words *drilled-number*)
-;;                         'face highlight-face)))
-;;          (english
-;;           (let ((spelln-language 'english-gb))
-;;             (propertize (spelln-integer-in-words *drilled-number*)
-;;                         'face 'highlight-face))))
-;;     (with-replaced-entry-text
-;;      (cond
-;;       ((eql 'to-english *drilled-number-direction*)
-;;        (format "\nThe English translation of %s is:\n\n%s\n"
-;;                non-english english))
-;;       (t
-;;        (format "\nThe %s translation of %s is:\n\n%s\n"
-;;                (capitalize (format "%s" language))
-;;                english non-english)))
-;;      (funcall reschedule-fn))))
 
 
 ;;; `spanish_verb' card type ==================================================
