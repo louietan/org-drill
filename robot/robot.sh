@@ -69,7 +69,7 @@ function wait_emacs {
 }
 
 function find_bot {
-    for i in `seq 1 20`;
+    for i in `seq 1 40`;
     do
         window_id=`xdotool search --onlyvisible --name "emacs-bot" 2> /dev/null`
         if [ -z "$window_id" ]

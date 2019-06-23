@@ -1410,8 +1410,8 @@ of QUALITY."
       (if (stringp weight)
           (setq weight (read weight)))
       (cl-destructuring-bind (next-interval _repetitions _ease
-                                         _failures _meanq total-repeats
-                                         &optional ofmatrix)
+                                         _failures _meanq _total-repeats
+                                         &optional _ofmatrix)
           (cl-case org-drill-spaced-repetition-algorithm
             (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
                                               ease quality failures
