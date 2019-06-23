@@ -723,7 +723,7 @@ regardless of whether the test was successful.")
 (defmacro org-drill-push-end (val place)
   "Add VAL to the end of the sequence stored in PLACE. Return the new
 value."
-  `(setq ,place (append ,place (list ,val))))
+  `(setf ,place (append ,place (list ,val))))
 
 (defun org-drill-round-float (floatnum fix)
   "Round the floating point number FLOATNUM to FIX decimal places.
@@ -1409,8 +1409,8 @@ of QUALITY."
         (org-drill-get-item-data)
       (if (stringp weight)
           (setq weight (read weight)))
-      (cl-destructuring-bind (next-interval repetitions ease
-                                         failures meanq total-repeats
+      (cl-destructuring-bind (next-interval _repetitions _ease
+                                         _failures _meanq total-repeats
                                          &optional ofmatrix)
           (cl-case org-drill-spaced-repetition-algorithm
             (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
