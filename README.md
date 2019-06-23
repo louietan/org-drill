@@ -968,4 +968,6 @@ familiar with it.
 
 Currently, I am refactoring org-drill significantly. It's quite hard
 to test all of its functionality automatically, so I expect
-breakages. Please be patient and report problems!
+breakages. In addition, some of the interfaces for card types has
+changed, and some functionality which is unmaintainable is being
+removed! Please be patient and report problems!
