@@ -5,7 +5,7 @@
 ;; Maintainer: Phillip Lord <phillip.lord@russet.org.uk>
 ;; Author: Paul Sexton <eeeickythump@gmail.com>
 ;; Version: 2.7
-;; Package-Requires: ((emacs "25.3") (seq "2.14"))
+;; Package-Requires: ((emacs "25.3") (seq "2.14") (org "9.2.4"))
 ;; Keywords: flashcards, memory, learning, memorization
 ;; Repository at https://gitlab.com/phillord/org-drill/issues
 ;;
@@ -339,7 +339,7 @@ even if their bodies are empty."
 (defcustom org-drill-card-tags-alist
   '(("explain" nil org-drill-explain-answer-presenter
      org-drill-explain-cleaner))
-"Alist associating tags with presentation functions.
+  "Alist associating tags with presentation functions.
 
 The alist is of the form (TAG QUESTION-PRESENTER ANSWER-PRESENTER CLEANER).
 
@@ -349,7 +349,10 @@ ANSWER-PRESENTER will be called with point in the entry when the
 answer is displayed to the user and CLEANER will be called when
 the answer is accepted. In all cases, point will be in the card
 in question when the function is called. All values may be nil in
-which case no function will be called.")
+which case no function will be called."
+  :group 'org-drill
+  :type '(alist :key-type (choice string (const nil))
+                :value-type function))
 
 
 (defcustom org-drill-scope
@@ -830,7 +833,7 @@ situation use `org-part-of-drill-entry-p'."
   (save-excursion
     (when marker
       (org-drill-goto-entry marker))
-    (member org-drill-question-tag (org-get-local-tags))))
+    (member org-drill-question-tag (org-get-tags nil t))))
 
 
 (defun org-drill-goto-entry (marker)
@@ -843,7 +846,7 @@ situation use `org-part-of-drill-entry-p'."
 or a subheading within a drill item?"
   (or (org-drill-entry-p)
       ;; Does this heading INHERIT the drill tag
-      (member org-drill-question-tag (org-get-tags-at))))
+      (member org-drill-question-tag (org-get-tags))))
 
 
 (defun org-drill-goto-drill-entry-heading ()
@@ -862,7 +865,7 @@ drill entry."
 (defun org-drill-entry-leech-p ()
   "Is the current entry a 'leech item'?"
   (and (org-drill-entry-p)
-       (member "leech" (org-get-local-tags))))
+       (member "leech" (org-get-tags nil t))))
 
 
 ;; (defun org-drill-entry-due-p ()
@@ -1581,7 +1584,7 @@ the current topic."
                     (> (org-current-level) drill-entry-level))
            (when (or (/= (org-current-level) (1+ drill-entry-level))
                         (funcall test))
-             (hide-subtree))
+             (outline-hide-subtree))
            (push (point) drill-sections)))
        t 'tree))
     (reverse drill-sections)))
