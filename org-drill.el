@@ -1635,9 +1635,7 @@ the current topic."
                                 "have never reviewed."))
             prompt)))
 
-(cl-defun org-drill-presentation-prompt  (session &key prompt
-                                               returns
-                                               (start-time (current-time)))
+(defun org-drill-presentation-prompt  (session &optional prompt)
   "Create a card prompt with a timer and user-specified menu.
 
 Arguments:
@@ -1655,32 +1653,21 @@ START-TIME: The time the card started to be displayed.  This
             be convenient to override this default.
 "
   (if org-drill-presentation-prompt-with-typing
-    (org-drill-presentation-prompt-in-buffer session)
-    (org-drill-presentation-prompt-in-mini-buffer session)))
+    (org-drill-presentation-prompt-in-buffer session prompt)
+    (org-drill-presentation-prompt-in-mini-buffer session prompt)))
 
-(cl-defun org-drill-presentation-prompt-in-mini-buffer (session &key prompt
-                                                          returns
-                                                          (start-time (current-time)))
-  "Create a card prompt with a timer and user-specified menu.
+(defun org-drill-presentation-prompt-in-mini-buffer (session &optional prompt)
+  "Create a card prompt with a timer and user-specified    if returns
+    (or (cdr (assoc ch returns)))
+ menu.
 
 Arguments:
 
 PROMPT: A string that overrides the standard prompt.
-
-RETURNS: An alist of the form ((<char> . <symbol>)...) where
-         <char> is the character pressed and <symbol> is the
-         returned value, which will normally be either a symbol,
-         `t' or `nil'.
-
-START-TIME: The time the card started to be displayed.  This
-            defaults to (current-time), however, if the function
-            is called multiple times from one card then it might
-            be convenient to override this default.
 "
-  (let* ((item-start-time start-time)
+  (let* ((item-start-time (current-time))
          (input nil)
          (ch nil)
-         (last-second 0)
          (prompt
           (or prompt
               (format (concat "Press key for answer, "
@@ -1712,13 +1699,11 @@ Consider reformulating the item to make it easier to remember.\n"
       (if (stringp input) (setq ch (elt input 0)))
       (if (eql ch org-drill--tags-key)
           (org-set-tags-command)))
-    (if returns
-        (or (cdr (assoc ch returns)))
-      (cond
-       ((eql ch org-drill--quit-key) nil)
-       ((eql ch org-drill--edit-key) 'edit)
-       ((eql ch org-drill--skip-key) 'skip)
-       (t t)))))
+    (cond
+     ((eql ch org-drill--quit-key) nil)
+     ((eql ch org-drill--edit-key) 'edit)
+     ((eql ch org-drill--skip-key) 'skip)
+     (t t))))
 
 
 (defvar org-drill-presentation-timer nil
@@ -1796,11 +1781,12 @@ Consider reformulating the item to make it easier to remember.\n"
       (set-input-method local-current-input-method)
       (current-buffer))))
 
-(defun org-drill-presentation-prompt-in-buffer (session)
+(defun org-drill-presentation-prompt-in-buffer (session &optional prompt)
   (let* ((item-start-time (current-time))
          (prompt
-          (format (concat "Type answer then return, "
-                          "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit.")))
+          (or prompt
+              (format (concat "Type answer then return, "
+                              "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit."))))
          (full-prompt
           (org-drill--make-minibuffer-prompt session prompt)))
     (setf (oref session drill-answer) nil)
