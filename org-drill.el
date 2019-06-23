@@ -1038,9 +1038,8 @@ in the matrix."
         (repeats (org-drill-entry-total-repeats :missing)))
     (cond
      (learn-str
-      (let ((learn-data (or (and learn-str
-                                 (read learn-str))
-                            (cl-copy-list initial-repetition-state))))
+      (let ((learn-data (and learn-str
+                             (read learn-str))))
         (list (nth 0 learn-data)        ; last interval
               (nth 1 learn-data)        ; repetitions
               (org-drill-entry-failure-count)
