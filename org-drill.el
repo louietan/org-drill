@@ -2878,7 +2878,7 @@ STATUS is one of the following values:
          :failed)
         ((org-drill-entry-new-p)
          :new)
-        ((org-drill-entry-overdue-p due last-int)
+        ((org-drill-entry-overdue-p session due last-int)
          ;; Overdue status overrides young versus old
          ;; distinction.
          ;; Store marker + due, for sorting of overdue entries
