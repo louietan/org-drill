@@ -2933,7 +2933,6 @@ STATUS is one of the following values:
         (:young
          (push (point-marker) (oref session young-mature-entries)))
         (:overdue
-         ;; dynamic
          (push (list (point-marker) due age) (oref session overdue-data)))
         (:old
          (push (point-marker) (oref session old-mature-entries)))
@@ -3691,8 +3690,10 @@ Returns a list of strings."
   (interactive)
   ;; org-drill-again uses org-drill-pending-entry-count to decide
   ;; whether it needs to scan or not.
-  (let* ((session org-drill-last-session)
-         (pending (org-drill-pending-entry-count session)))
+  (let* ((session
+          (or org-drill-last-session (org-drill-session)))
+         (pending
+          (org-drill-pending-entry-count session)))
     (unless (cl-plusp pending)
       (org-drill-map-entries
        (apply-partially 'org-drill-map-entry-function session)
@@ -3703,17 +3704,20 @@ Returns a list of strings."
         (progn
           (message "Org Drill: Starting SM learning")
           (sit-for 0.5)
+          (setq org-drill-last-session session)
           (org-drill-again))
       (message "Org Drill: Starting leitner learning")
       (sit-for 0.5)
-      (org-drill-leitner))))
+      (org-drill-leitner session))))
 
-(defun org-drill-leitner ()
+(defun org-drill-leitner (&optional session)
   "Perform Leitner learning"
   (interactive)
   (let ((org-drill-leitner-boxed-entries nil)
         (org-drill-leitner-unboxed-entries nil)
-        (session (setq org-drill-last-session (org-drill-session)))
+        (session (setq org-drill-last-session
+                       (or session
+                           (org-drill-session))))
         (count 0))
     (org-drill-all-leitner-capture)
     ;; make sure we have enough (or at least the maximum number we
