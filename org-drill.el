@@ -717,7 +717,7 @@ regardless of whether the test was successful.")
 
 (when org-drill-org-8-p
   (defun org-toggle-latex-fragment (&rest args)
-    (apply 'org-prefix-latex-fragment args)))
+    (apply 'org-preview-latex-fragment args)))
 
 ;;;; Utilities ================================================================
 
