@@ -65,8 +65,6 @@
   :tag "Org-Drill"
   :group 'org-link)
 
-
-
 (defcustom org-drill-question-tag
   "drill"
   "Tag which topics must possess in order to be identified as review topics
@@ -649,7 +647,6 @@ random number to another language.")
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
-
 (defvar org-drill-current-session nil)
 (defvar org-drill-last-session nil)
 
@@ -705,6 +702,22 @@ regardless of whether the test was successful.")
 (put 'org-drill-left-cloze-delimiter 'safe-local-variable 'stringp)
 (put 'org-drill-right-cloze-delimiter 'safe-local-variable 'stringp)
 
+
+;;; Org compatability hacks
+(defvar org-drill-org-8-p (string-prefix-p "8" org-version))
+(when org-drill-org-8-p
+  (advice-add 'org-get-tags :around #'org-drill-get-tags-advice))
+
+(defun org-drill-get-tags-advice (orig-fun &rest args)
+  ;; the two arg call obsoletes get-local-tags
+  (if (= 2 (length args))
+      ;; and we don't want any byte compile errors
+      (if (fboundp 'org-get-local-tags) (org-get-local-tags))
+    (funcall orig-fun)))
+
+(when org-drill-org-8-p
+  (defun org-toggle-latex-fragment (&rest args)
+    (apply 'org-prefix-latex-fragment args)))
 
 ;;;; Utilities ================================================================
 
