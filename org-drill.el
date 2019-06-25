@@ -51,12 +51,11 @@
 
 ;;; Code:
 
-(require 'eieio)
 (require 'cl-lib)
+(require 'eieio)
 (require 'org)
 (require 'org-agenda)
 (require 'org-id)
-(require 'savehist)
 (require 'seq)
 
 (defgroup org-drill nil
@@ -437,16 +436,20 @@ algorithm. The matrix is saved at the end of each drill session.
 Over time, values in the matrix will adapt to the individual user's
 pace of learning.")
 
+(defvar org-drill-persist-location
+  (concat user-emacs-directory "org-drill-sm5-optimal-factor-matrix"))
 
-(add-to-list 'savehist-additional-variables
-             'org-drill-sm5-optimal-factor-matrix)
+(when (file-exists-p org-drill-persist-location)
+  (with-temp-buffer
+    (insert-file-contents org-drill-persist-location)
+    (setq org-drill-sm5-optimal-factor-matrix
+          (read (current-buffer)))))
 
-;; TODO This is used to save -- org-drill-sm5-optimal-factor-matrix
-;; but clearly saves everything else as well. We need a better
-;; solution here.
-(unless savehist-mode
-  (savehist-mode 1))
-
+(defun org-drill-persist ()
+  (with-temp-buffer
+    (print org-drill-sm5-optimal-factor-matrix (current-buffer))
+    (write-region (point-min) (point-max) org-drill-persist-location
+                  nil 'quiet)))
 
 (defun org-drill--transfer-optimal-factor-matrix ()
   (if (and org-drill-optimal-factor-matrix
@@ -3068,10 +3071,8 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
       (message nil)
       ))))
 
-
 (defun org-drill-save-optimal-factor-matrix ()
-  (savehist-autosave))
-
+  (org-drill-persist))
 
 (defun org-drill-cram (&optional scope drill-match)
   "Run an interactive drill session in 'cram mode'. In cram mode,
