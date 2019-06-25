@@ -704,8 +704,7 @@ regardless of whether the test was successful.")
 
 
 ;;; Org compatability hacks
-(defvar org-drill-org-8-p (string-prefix-p "8" org-version))
-(when org-drill-org-8-p
+(when (version< org-version "9.2")
   (advice-add 'org-get-tags :around #'org-drill-get-tags-advice))
 
 (defun org-drill-get-tags-advice (orig-fun &rest args)
@@ -715,7 +714,7 @@ regardless of whether the test was successful.")
       (if (fboundp 'org-get-local-tags) (org-get-local-tags))
     (funcall orig-fun)))
 
-(when org-drill-org-8-p
+(when (= 8 (car (version-to-list org-version)))
   (defun org-toggle-latex-fragment (&rest args)
     (apply 'org-preview-latex-fragment args)))
 
