@@ -782,7 +782,7 @@ CMD is bound, or nil if it is not bound to a key."
       t "^[^.].*\\.org$"))
     (t scope)))
 
-(defmacro with-hidden-cloze-text (&rest body)
+(defmacro org-drill-with-hidden-cloze-text (&rest body)
   `(progn
      (org-drill-hide-clozed-text)
      (unwind-protect
@@ -2093,7 +2093,7 @@ Note: does not actually alter the item."
 (defun org-drill-present-simple-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
-    (with-hidden-cloze-text
+    (org-drill-with-hidden-cloze-text
      (org-drill-hide-all-subheadings-except nil)
      (org-drill--show-latex-fragments)  ; overlay all LaTeX fragments with images
      (ignore-errors
@@ -2124,7 +2124,7 @@ Note: does not actually alter the item."
 (defun org-drill-present-simple-card-with-typed-answer (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
-    (with-hidden-cloze-text
+    (org-drill-with-hidden-cloze-text
      (org-drill-hide-all-subheadings-except nil)
      (org-drill--show-latex-fragments)  ; overlay all LaTeX fragments with images
      (ignore-errors
@@ -2142,7 +2142,7 @@ Note: does not actually alter the item."
 (defun org-drill-present-two-sided-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
-    (with-hidden-cloze-text
+    (org-drill-with-hidden-cloze-text
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
@@ -2161,7 +2161,7 @@ Note: does not actually alter the item."
 (defun org-drill-present-multi-sided-card (session)
   (with-hidden-comments
    (with-hidden-cloze-hints
-    (with-hidden-cloze-text
+    (org-drill-with-hidden-cloze-text
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
@@ -3571,7 +3571,7 @@ returns its return value."
   (let ((prompt nil))
     (with-hidden-comments
      (with-hidden-cloze-hints
-      (with-hidden-cloze-text
+      (org-drill-with-hidden-cloze-text
        (cl-case (cl-random 6)
          ;; PWL 2018-06-22
          ;; As far as I can tell, neither prompt nor reveal-headings
