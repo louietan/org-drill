@@ -791,7 +791,7 @@ CMD is bound, or nil if it is not bound to a key."
        (org-drill-unhide-clozed-text))))
 
 
-(defmacro with-hidden-cloze-hints (&rest body)
+(defmacro org-drill-with-hidden-cloze-hints (&rest body)
   (declare (debug t))
   `(progn
      (org-drill-hide-cloze-hints)
@@ -801,7 +801,7 @@ CMD is bound, or nil if it is not bound to a key."
        (org-drill-unhide-text))))
 
 
-(defmacro with-hidden-comments (&rest body)
+(defmacro org-drill-with-hidden-comments (&rest body)
   `(progn
      (if org-drill-hide-item-headings-p
          (org-drill-hide-heading-at-point))
@@ -2091,8 +2091,8 @@ Note: does not actually alter the item."
 
 
 (defun org-drill-present-simple-card (session)
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
      (org-drill-hide-all-subheadings-except nil)
      (org-drill--show-latex-fragments)  ; overlay all LaTeX fragments with images
@@ -2117,13 +2117,13 @@ Note: does not actually alter the item."
            (ignore-errors
              (org-display-inline-images t))
            (org-cycle-hide-drawers 'all)
-           (with-hidden-cloze-hints
+           (org-drill-with-hidden-cloze-hints
             (funcall reschedule-fn session))))))
 
 
 (defun org-drill-present-simple-card-with-typed-answer (session)
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
      (org-drill-hide-all-subheadings-except nil)
      (org-drill--show-latex-fragments)  ; overlay all LaTeX fragments with images
@@ -2140,8 +2140,8 @@ Note: does not actually alter the item."
 
 
 (defun org-drill-present-two-sided-card (session)
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
@@ -2159,8 +2159,8 @@ Note: does not actually alter the item."
 
 
 (defun org-drill-present-multi-sided-card (session)
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
@@ -2192,8 +2192,8 @@ If FORCE-SHOW-LAST is non-nil, never hide the last piece of text.
 If the number of text pieces in the item is less than
 NUMBER-TO-HIDE, then all text pieces will be hidden (except the first or last
 items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (let ((item-end nil)
           (match-count 0)
           (body-start (or (cdr (org-get-property-block))
@@ -2264,8 +2264,8 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
   "Hide the TO-HIDE'th piece of clozed text. 1 is the first piece. If
 TO-HIDE is negative, count backwards, so -1 means the last item, -2
 the second to last, etc."
-  (with-hidden-comments
-   (with-hidden-cloze-hints
+  (org-drill-with-hidden-comments
+   (org-drill-with-hidden-cloze-hints
     (let ((item-end nil)
           (match-count 0)
           (body-start (or (cdr (org-get-property-block))
@@ -2434,7 +2434,7 @@ pieces rather than one."
   "Present the string QUESTION as the only visible content of the card.
 If ANSWER is supplied, set the session slot `drill-answer' to its value."
   (if answer (setf (oref session drill-answer) answer))
-  (with-hidden-comments
+  (org-drill-with-hidden-comments
    (with-replaced-entry-text
     (concat "\n" question)
     (org-drill-hide-all-subheadings-except nil)
@@ -3569,8 +3569,8 @@ returns its return value."
 
 (defun org-drill-present-spanish-verb (session)
   (let ((prompt nil))
-    (with-hidden-comments
-     (with-hidden-cloze-hints
+    (org-drill-with-hidden-comments
+     (org-drill-with-hidden-cloze-hints
       (org-drill-with-hidden-cloze-text
        (cl-case (cl-random 6)
          ;; PWL 2018-06-22
