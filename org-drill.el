@@ -6,8 +6,9 @@
 ;; Author: Paul Sexton <eeeickythump@gmail.com>
 ;; Version: 2.7
 ;; Package-Requires: ((emacs "25.3") (seq "2.14") (org "9.2.4"))
-;; Keywords: flashcards, memory, learning, memorization
-;; Repository at https://gitlab.com/phillord/org-drill/issues
+;; Keywords: games, outlines, multimedia
+
+;; URL: https://gitlab.com/phillord/org-drill/issues
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -715,7 +716,9 @@ regardless of whether the test was successful.")
     (funcall orig-fun)))
 
 (when (= 8 (car (version-to-list org-version)))
-  (defun org-toggle-latex-fragment (&rest args)
+  ;; Shut up package-lint
+  (defalias 'org-drill-defun 'defun)
+  (org-drill-defun org-toggle-latex-fragment (&rest args)
     (apply 'org-preview-latex-fragment args)))
 
 ;;;; Utilities ================================================================
@@ -853,7 +856,7 @@ situation use `org-part-of-drill-entry-p'."
   (goto-char marker))
 
 
-(defun org-part-of-drill-entry-p ()
+(defun org-drill-part-of-drill-entry-p ()
   "Is the current entry either the main heading of a 'drill item',
 or a subheading within a drill item?"
   (or (org-drill-entry-p)
@@ -866,7 +869,7 @@ or a subheading within a drill item?"
 drill entry."
   (unless (org-at-heading-p)
     (org-back-to-heading))
-  (unless (org-part-of-drill-entry-p)
+  (unless (org-drill-part-of-drill-entry-p)
     (error "Point is not inside a drill entry"))
   (while (not (org-drill-entry-p))
     (unless (org-up-heading-safe)
@@ -1747,10 +1750,10 @@ Consider reformulating the item to make it easier to remember.\n"
 
 (define-derived-mode org-drill-response-mode nil "Org-Drill")
 (define-key org-drill-response-mode-map [return] 'org-drill-response-rtn)
-(define-key org-drill-response-mode-map (kbd "C-c q") 'org-drill-response-quit)
-(define-key org-drill-response-mode-map (kbd "C-c e") 'org-drill-response-edit)
-(define-key org-drill-response-mode-map (kbd "C-c s") 'org-drill-response-skip)
-(define-key org-drill-response-mode-map (kbd "C-c t") 'org-drill-response-tags)
+(define-key org-drill-response-mode-map (kbd "C-c C-q") 'org-drill-response-quit)
+(define-key org-drill-response-mode-map (kbd "C-c C-e") 'org-drill-response-edit)
+(define-key org-drill-response-mode-map (kbd "C-c C-s") 'org-drill-response-skip)
+(define-key org-drill-response-mode-map (kbd "C-c C-t") 'org-drill-response-tags)
 
 (defun org-drill-response-complete ()
   (kill-buffer (current-buffer))
@@ -1859,7 +1862,7 @@ Consider reformulating the item to make it easier to remember.\n"
           (read-string full-prompt nil nil nil t))))
 
 
-(defun org-pos-in-regexp (pos regexp &optional nlines)
+(defun org-drill-pos-in-regexp (pos regexp &optional nlines)
   (save-excursion
     (goto-char pos)
     (org-in-regexp regexp nlines)))
@@ -1910,7 +1913,7 @@ visual overlay, or with the string TEXT if it is supplied."
       ;; - LaTeX math fragments
       ;; - the contents of SRC blocks
       (unless (save-match-data
-                (or (org-pos-in-regexp (match-beginning 0)
+                (or (org-drill-pos-in-regexp (match-beginning 0)
                                        org-bracket-link-regexp 1)
                     (org-in-src-block-p)
                     (org-inside-LaTeX-fragment-p)))
@@ -1954,13 +1957,13 @@ visual overlay, or with the string TEXT if it is supplied."
   (save-excursion
     (while (re-search-forward org-drill-cloze-regexp nil t)
       (unless (or (save-match-data
-                    (org-pos-in-regexp (match-beginning 0)
+                    (org-drill-pos-in-regexp (match-beginning 0)
                                        org-bracket-link-regexp 1))
                   (null (match-beginning 2))) ; hint subexpression matched
         (org-drill-hide-region (match-beginning 2) (match-end 2))))))
 
 
-(defmacro with-replaced-entry-text (text &rest body)
+(defmacro org-drill-with-replaced-entry-text (text &rest body)
   "During the execution of BODY, the entire text of the current entry is
 concealed by an overlay that displays the string TEXT."
   `(progn
@@ -1971,7 +1974,7 @@ concealed by an overlay that displays the string TEXT."
        (org-drill-unreplace-entry-text))))
 
 
-(defmacro with-replaced-entry-text-multi (replacements &rest body)
+(defmacro org-drill-with-replaced-entry-text-multi (replacements &rest body)
   "During the execution of BODY, the entire text of the current entry is
 concealed by an overlay that displays the overlays in REPLACEMENTS."
   `(progn
@@ -2035,7 +2038,7 @@ Note: does not actually alter the item."
       (overlay-put ovl 'display (nth i replacements)))))
 
 
-(defmacro with-replaced-entry-heading (heading &rest body)
+(defmacro org-drill-with-replaced-entry-heading (heading &rest body)
   `(progn
      (org-drill-replace-entry-heading ,heading)
      (unwind-protect
@@ -2106,7 +2109,7 @@ Note: does not actually alter the item."
 (defun org-drill-present-default-answer (session reschedule-fn)
   (prog1 (cond
           ((oref session drill-answer)
-           (with-replaced-entry-text
+           (org-drill-with-replaced-entry-text
             (format "\nAnswer:\n\n  %s\n" (oref session drill-answer))
             (funcall reschedule-fn session)
             ))
@@ -2208,7 +2211,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
         (goto-char body-start)
         (while (re-search-forward org-drill-cloze-regexp item-end t)
           (let ((in-regexp? (save-match-data
-                              (org-pos-in-regexp (match-beginning 0)
+                              (org-drill-pos-in-regexp (match-beginning 0)
                                                  org-bracket-link-regexp 1))))
             (unless (or in-regexp?
                         (org-inside-LaTeX-fragment-p))
@@ -2239,7 +2242,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
             (setq cnt 0)
             (while (re-search-forward org-drill-cloze-regexp item-end t)
               (unless (save-match-data
-                        (or (org-pos-in-regexp (match-beginning 0)
+                        (or (org-drill-pos-in-regexp (match-beginning 0)
                                                org-bracket-link-regexp 1)
                             (org-inside-LaTeX-fragment-p)))
                 (cl-incf cnt)
@@ -2248,7 +2251,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
       ;; (loop
       ;;  do (re-search-forward org-drill-cloze-regexp
       ;;                        item-end t pos-to-hide)
-      ;;  while (org-pos-in-regexp (match-beginning 0)
+      ;;  while (org-drill-pos-in-regexp (match-beginning 0)
       ;;                           org-bracket-link-regexp 1))
       ;; (org-drill-hide-matched-cloze-text)))))
       (org-drill--show-latex-fragments)
@@ -2279,7 +2282,7 @@ the second to last, etc."
         (goto-char body-start)
         (while (re-search-forward org-drill-cloze-regexp item-end t)
           (let ((in-regexp? (save-match-data
-                              (org-pos-in-regexp (match-beginning 0)
+                              (org-drill-pos-in-regexp (match-beginning 0)
                                                  org-bracket-link-regexp 1))))
             (unless (or in-regexp?
                         (org-inside-LaTeX-fragment-p))
@@ -2299,7 +2302,7 @@ the second to last, etc."
                       ;; Don't consider this a cloze region if it is part of an
                       ;; org link, or if it occurs inside a LaTeX math
                       ;; fragment
-                      (or (org-pos-in-regexp (match-beginning 0)
+                      (or (org-drill-pos-in-regexp (match-beginning 0)
                                              org-bracket-link-regexp 1)
                           (org-inside-LaTeX-fragment-p)))
               (cl-incf cnt)
@@ -2435,7 +2438,7 @@ pieces rather than one."
 If ANSWER is supplied, set the session slot `drill-answer' to its value."
   (if answer (setf (oref session drill-answer) answer))
   (org-drill-with-hidden-comments
-   (with-replaced-entry-text
+   (org-drill-with-replaced-entry-text
     (concat "\n" question)
     (org-drill-hide-all-subheadings-except nil)
     (org-cycle-hide-drawers 'all)
@@ -2465,7 +2468,7 @@ See `org-drill' for more details."
 (defun org-drill-entry-f (session complete-func)
   (interactive)
   (org-drill-goto-drill-entry-heading)
-  ;;(unless (org-part-of-drill-entry-p)
+  ;;(unless (org-drill-part-of-drill-entry-p)
   ;;  (error "Point is not inside a drill entry"))
   ;;(unless (org-at-heading-p)
   ;;  (org-back-to-heading))
@@ -3450,7 +3453,7 @@ RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
   (cl-destructuring-bind (infinitive _inf-hint translation tense mood)
       (org-drill-get-verb-conjugation-info)
-    (with-replaced-entry-heading
+    (org-drill-with-replaced-entry-heading
      (format "%s of %s ==> %s\n\n"
              (capitalize
               (cond
@@ -3555,7 +3558,7 @@ RESCHEDULE-FN must be a function that calls `org-drill-reschedule' and
 returns its return value."
   (cl-destructuring-bind (noun _noun-root noun-gender _noun-hint translation)
       (org-drill-get-noun-info)
-    (with-replaced-entry-heading
+    (org-drill-with-replaced-entry-heading
      (format "Declensions of %s (%s) ==> %s\n\n"
              noun noun-gender translation)
      (org-cycle-hide-drawers 'all)
