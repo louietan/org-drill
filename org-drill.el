@@ -51,10 +51,8 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'hi-lock))
 (require 'eieio)
 (require 'cl-lib)
-(require 'hi-lock)
 (require 'org)
 (require 'org-agenda)
 (require 'org-id)
