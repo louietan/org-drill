@@ -765,8 +765,7 @@ CMD is bound, or nil if it is not bound to a key."
 
 (defun org-drill-map-entries (func &optional scope drill-match &rest skip)
   "Like `org-map-entries', but only drill entries are processed."
-  (let ((org-drill-scope (or scope org-drill-scope))
-        (org-drill-match (or drill-match org-drill-match)))
+  (let ((org-drill-match (or drill-match org-drill-match)))
     (apply 'org-map-entries func
            (concat "+" org-drill-question-tag
                    (if (and (stringp org-drill-match)
@@ -777,14 +776,20 @@ CMD is bound, or nil if it is not bound to a key."
            skip)))
 
 (defun org-drill-current-scope (scope)
-  (cl-case scope
-    (file nil)
-    (file-no-restriction 'file)
-    (directory
-     (directory-files
-      (file-name-directory (buffer-file-name))
-      t "^[^.].*\\.org$"))
-    (t scope)))
+  "Translate SCOPE into an scope suitable for `org-map-entries'.
+
+If scope is NIL, then use `org-drill-scope'.
+
+Returns scope as defined by `org-map-entries'"
+  (let ((scope (or scope org-drill-scope)))
+    (cl-case scope
+      (file nil)
+      (file-no-restriction 'file)
+      (directory
+       (directory-files
+        (file-name-directory (buffer-file-name))
+        t "^[^.].*\\.org$"))
+      (t scope))))
 
 (defmacro org-drill-with-hidden-cloze-text (&rest body)
   `(progn
@@ -3787,10 +3792,9 @@ shuffling is done in place."
 
 (defun org-drill-map-leitner (func &optional scope)
   "Return all entries marked with leitner tag."
-  (let ((scope (or scope org-drill-scope)))
-    (org-map-entries
-     func (concat "+" "leitner")
-     (org-drill-current-scope scope))))
+  (org-map-entries
+   func (concat "+" "leitner")
+   (org-drill-current-scope scope)))
 
 (defun org-drill-all-leitner-capture (&optional scope)
   "Capture all items marked with a leitner tag"
@@ -3959,7 +3963,7 @@ shuffling is done in place."
     (org-drill-map-entries
      (lambda ()
        (setq number-drill-entries (+ 1 number-drill-entries)))
-     org-drill-scope nil)
+     nil nil)
     (message "There are %s drill entries\nThere are %s leitner entries\nA total of %s entries."
              number-drill-entries
              (+ (length org-drill-leitner-boxed-entries)
