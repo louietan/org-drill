@@ -1804,7 +1804,7 @@ Consider reformulating the item to make it easier to remember.\n"
          (prompt
           (or prompt
               (format (concat "Type answer then return, "
-                              "C-c e=edit, C-c t=tags, C-c s=skip, C-c q=quit."))))
+                              "C-c C-e=edit, C-c C-t=tags, C-c C-s=skip, C-c C-q=quit."))))
          (full-prompt
           (org-drill--make-minibuffer-prompt session prompt)))
     (setf (oref session drill-answer) nil)
