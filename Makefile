@@ -57,4 +57,7 @@ all-card-robot-test: clean-elc
 spanish-robot-test: clean-elc
 	$(EMACS_ENV) ./robot/spanish-run.sh $(SMALL)
 
+explainer-robot-test: clean-elc
+	$(EMACS_ENV) ./robot/explainer-run.sh $(SMALL)
+
 .PHONY: test

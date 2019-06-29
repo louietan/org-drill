@@ -3948,7 +3948,7 @@ shuffling is done in place."
                            #'org-drill-test-display-rescheduler))
     (org-toggle-tag "zysygy")))
 
-(defun org-drill-test-display-rescheduler ()
+(defun org-drill-test-display-rescheduler (session)
   (run-hooks 'org-drill-display-answer-hook)
   ;; Normally, the rescheduler waits for input at this point
   (read-key-sequence "Press anything to continue"))
@@ -3971,7 +3971,6 @@ shuffling is done in place."
              (+ number-drill-entries
                 (+ (length org-drill-leitner-boxed-entries)
                    (length org-drill-leitner-unboxed-entries))))))
-
 
 (provide 'org-drill)
 ;;; org-drill.el ends here

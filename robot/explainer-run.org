@@ -1,0 +1,36 @@
+* Mathematical Operators                                            :explain:
+
+Mathematical operators are used to change several numbers into one
+
+** Addition                                                         :explain:
+
+Addition is used to combine two values into a larger one
+
+*** Question							      :drill:
+    :PROPERTIES:
+    :ID:       8f6d0b14-b9b2-477e-a01d-aea780860b7c
+    :END:
+
+2 + 2 = [4]
+
+*** Question
+
+3 + 3 = [6]
+
+** Subtraction                                                      :explain:
+
+Subtraction is used to remove one value from another to make a smaller one
+
+*** Question                                                          :drill:
+    :PROPERTIES:
+    :ID:       05b2019b-c1e3-423d-aad4-b6464c2ad613
+    :END:
+
+3 - 2 = [1]
+
+*** Question                                                          :drill:
+    :PROPERTIES:
+    :ID:       1f22df13-2b2e-4f2c-be04-fd40a5dcbcd8
+    :END:
+
+5 - 2 = [3]

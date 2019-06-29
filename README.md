@@ -300,6 +300,79 @@ will be hidden.
 	The capital city of [New Zealand] is [Wellington], which is located in
 	the [North||North/South] Island and has a population of about [400,000].
 
+## Explainers
+
+It is sometimes useful to add notes that give context to the
+answer. This can be achieved through subheadings. In the example
+below, `Notes` will be hidden when the question is raised, and
+displayed with the answer.
+
+    *** Greeting 1                                       :drill:
+
+    Translate into Spanish:
+    What is your name? (formal)
+
+    **** Answer
+
+    ¿Cómo se llama usted?
+
+    **** Notes
+
+    llamar = to be named
+
+While this works well, there times when it would be useful to add the
+same note to several cards. Explainers allows this. An explanation
+goes in the super heading and will be displayed with the answer. For
+example:
+
+    ** Addition                                                         :explain:
+
+    Addition is used to combine two values into a larger one
+
+    *** Question                                                          :drill:
+
+    2 + 2 = [4]
+
+    *** Question
+
+    3 + 3 = [6]
+
+When `2 + 2 = 4` is shown the explanation will be shown
+also. Higher-level of explanations can be used also. For example, in
+this case, both explanations will be shown for any question.
+
+
+    * Mathematical Operators                                            :explain:
+
+    Mathematical operators are used to change several numbers into one
+
+    ** Addition                                                         :explain:
+
+    Addition is used to combine two values into a larger one
+
+    *** Question                                                          :drill:
+
+    2 + 2 = [4]
+
+    *** Question
+
+    3 + 3 = [6]
+
+    ** Subtraction                                                      :explain:
+
+    Subtraction is used to remove one value from another to make a smaller one
+
+    *** Question                                                          :drill:
+
+    3 - 2 = [1]
+
+    *** Question                                                          :drill:
+
+    5 - 2 = [3]
+
+This can be very useful, for example, when learning multiple examples
+for grammatical rules.
+
 ## User-defined card types
 
 Finally, you can write your own emacs lisp functions to define new kinds of
