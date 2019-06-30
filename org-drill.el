@@ -228,6 +228,7 @@ rest of the expression after the string is a `hint', to be displayed instead of
 the hidden cloze during a test.")
 
 (defun org-drill--compute-cloze-regexp ()
+  "Returns a regexp that detects clozes."
   (concat "\\("
           (regexp-quote org-drill-left-cloze-delimiter)
           "[[:cntrl:][:graph:][:space:]]+?\\)\\(\\|"
@@ -237,17 +238,23 @@ the hidden cloze during a test.")
           "\\)"))
 
 (defun org-drill--compute-cloze-keywords ()
+  "Returns a fontification spec that detects cloze keywords."
   (list (list (org-drill--compute-cloze-regexp)
               (cl-copy-list '(1 'org-drill-visible-cloze-face nil))
               (cl-copy-list '(2 'org-drill-visible-cloze-hint-face t))
-              (cl-copy-list '(3 'org-drill-visible-cloze-face nil))
-              )))
+              (cl-copy-list '(3 'org-drill-visible-cloze-face nil)))))
 
 (defvar-local org-drill-cloze-regexp
-  (org-drill--compute-cloze-regexp))
+  (org-drill--compute-cloze-regexp)
+  "Regexp that detects cloze.
+
+This is buffer-local variable.")
 
 (defvar-local org-drill-cloze-keywords
-  (org-drill--compute-cloze-keywords))
+  (org-drill--compute-cloze-keywords)
+  "Fontification form for cloze.
+
+This is a buffer-local variable.")
 
 ;; Variables defining what keys can be pressed during drill sessions to quit the
 ;; session, edit the item, etc.
