@@ -5,7 +5,7 @@
 ;; Maintainer: Phillip Lord <phillip.lord@russet.org.uk>
 ;; Author: Paul Sexton <eeeickythump@gmail.com>
 ;; Version: 2.7
-;; Package-Requires: ((emacs "25.3") (seq "2.14") (org "9.2.4"))
+;; Package-Requires: ((emacs "25.3") (seq "2.14") (org "9.2.4") (persist "0.3"))
 ;; Keywords: games, outlines, multimedia
 
 ;; URL: https://gitlab.com/phillord/org-drill/issues
@@ -56,6 +56,7 @@
 (require 'org)
 (require 'org-agenda)
 (require 'org-id)
+(require 'persist)
 (require 'seq)
 
 (defgroup org-drill nil
@@ -408,7 +409,7 @@ matrix data is now stored in the variable
   :group 'org-drill
   :type 'sexp)
 
-(defvar org-drill-sm5-optimal-factor-matrix
+(persist-defvar org-drill-sm5-optimal-factor-matrix
   nil
   "DO NOT CHANGE THE VALUE OF THIS VARIABLE.
 
@@ -418,20 +419,6 @@ algorithm. The matrix is saved at the end of each drill session.
 Over time, values in the matrix will adapt to the individual user's
 pace of learning.")
 
-(defvar org-drill-persist-location
-  (concat user-emacs-directory "org-drill-sm5-optimal-factor-matrix"))
-
-(when (file-exists-p org-drill-persist-location)
-  (with-temp-buffer
-    (insert-file-contents org-drill-persist-location)
-    (setq org-drill-sm5-optimal-factor-matrix
-          (read (current-buffer)))))
-
-(defun org-drill-persist ()
-  (with-temp-buffer
-    (print org-drill-sm5-optimal-factor-matrix (current-buffer))
-    (write-region (point-min) (point-max) org-drill-persist-location
-                  nil 'quiet)))
 
 (defun org-drill--transfer-optimal-factor-matrix ()
   (if (and org-drill-optimal-factor-matrix
@@ -2928,16 +2915,13 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
      (t
       (org-drill-final-report session)
       (if (eql 'sm5 org-drill-spaced-repetition-algorithm)
-          (org-drill-save-optimal-factor-matrix))
+          (persist-save 'org-drill-sm5-optimal-factor-matrix))
       (if org-drill-save-buffers-after-drill-sessions-p
           (save-some-buffers))
       (message "Drill session finished!")
       (sit-for 1)
       (message nil)
       ))))
-
-(defun org-drill-save-optimal-factor-matrix ()
-  (org-drill-persist))
 
 (defun org-drill-cram (&optional scope drill-match)
   "Run an interactive drill session in 'cram mode'. In cram mode,

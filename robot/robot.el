@@ -35,9 +35,7 @@
       (set-buffer buffer)
       (write-region (point-min) (point-max)
                     (concat top-dir "robot/" file)
-                    nil 'dont-display-wrote-file-message
-                    ))))
-
+                    nil 'dont-display-wrote-file-message))))
 
 (add-hook 'debugger-mode-hook
           'robot-dump-in-a-bit)
@@ -69,3 +67,26 @@
              org-drill-cards-in-this-emacs n)
      'external-debugging-output)
     (kill-emacs -1)))
+
+;; Move the package-user-dir somewhere local
+(require 'package)
+(setq package-user-dir
+      (concat
+       default-directory
+       "elpa"))
+
+(package-initialize)
+
+;; Borrowed from use-package
+(defun robot-ensure-elpa (package &optional no-refresh)
+  (if (package-installed-p package)
+      t
+    (if (and (not no-refresh))
+        (package-read-all-archive-contents))
+    (if (or (assoc package package-archive-contents) no-refresh)
+        (package-install package)
+      (progn
+        (package-refresh-contents)
+        (robot-ensure-elpa package t)))))
+
+(robot-ensure-elpa 'persist)
