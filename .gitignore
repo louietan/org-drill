@@ -1,6 +1,7 @@
 /.cask
 org-drill.html
 /*.elc
+/elpa
 /makefile-local
 /robot/Makefile
 /robot/main-test-copy.org
