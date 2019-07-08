@@ -536,8 +536,6 @@ exponential effect on inter-repetition spacing."
   :group 'org-drill
   :type 'boolean)
 
-(defvar org-drill-display-answer-hook nil)
-
 (defcustom org-drill-cloze-length-matches-hidden-text-p
   nil
   "If non-nil, when concealing cloze deletions, force the length of
@@ -546,7 +544,8 @@ to preserve the formatting in a displayed table, for example."
   :group 'org-drill
   :type 'boolean)
 
-(defvar-local org-drill-response-associated-buffer nil)
+(defvar org-drill-display-answer-hook nil
+  "Hook called when `org-drill' answers are displayed.")
 
 (defclass org-drill-session ()
   ((qualities :initform nil)
@@ -1702,7 +1701,6 @@ Consider reformulating the item to make it easier to remember.\n"
         (cb (current-buffer)))
     (with-current-buffer
         (get-buffer-create "*Org-Drill*")
-      (setq org-drill-response-associated-buffer cb)
       (erase-buffer)
       (org-drill-response-mode)
       (set-input-method local-current-input-method)
