@@ -581,8 +581,7 @@ interval was greater than ORG-DRILL-DAYS-BEFORE-OLD days.")
    (cram-mode
     :initform nil
     :documementation "Are we in 'cram mode', where all items are considered due
-for review unless they were already reviewed in the recent past?"
-    )
+for review unless they were already reviewed in the recent past?")
    (warned-about-id-creation
     :initform nil
     :documentation "Have we warned the user about ID creation this session?")
@@ -608,9 +607,15 @@ random number to another language.")
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
-(defvar org-drill-current-session nil)
+(defvar org-drill-current-session nil
+  "If non-nil, the current session.
 
-(defvar org-drill-last-session nil)
+The current session is an `org-drill-session' object.")
+
+(defvar org-drill-last-session nil
+  "If non-nil, the last session.
+
+This can be used to resume the last session.")
 
 (defvar org-drill-cards-in-this-emacs 0
   "The total number of cards displayed in this Emacs invocation.
