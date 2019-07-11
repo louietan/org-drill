@@ -687,6 +687,7 @@ regardless of whether the test was successful.")
 
 ;;;; Utilities ================================================================
 (defmacro org-drill-pop-random (place)
+  "Remove an item randomly from PLACE."
   (let ((idx (cl-gensym)))
     `(if (null ,place)
          nil
@@ -713,6 +714,7 @@ CMD is bound, or nil if it is not bound to a key."
     (if key (key-description key))))
 
 (defun org-drill-time-to-inactive-org-timestamp (time)
+  "Convert TIME into org-mode timestamp."
   (format-time-string
    (concat "[" (substring (cdr org-time-stamp-formats) 1 -1) "]")
    time))
@@ -746,6 +748,8 @@ Returns scope as defined by `org-map-entries'"
       (t scope))))
 
 (defmacro org-drill-with-hidden-cloze-text (&rest body)
+  "Eval BODY with clozed text hidden."
+  (declare (debug t))
   `(progn
      (org-drill-hide-clozed-text)
      (unwind-protect
@@ -754,6 +758,7 @@ Returns scope as defined by `org-map-entries'"
        (org-drill-unhide-clozed-text))))
 
 (defmacro org-drill-with-hidden-cloze-hints (&rest body)
+  "Eval BODY with cloze hints hidden."
   (declare (debug t))
   `(progn
      (org-drill-hide-cloze-hints)
@@ -763,6 +768,8 @@ Returns scope as defined by `org-map-entries'"
        (org-drill-unhide-text))))
 
 (defmacro org-drill-with-hidden-comments (&rest body)
+  "Eval BODY with comments hidden."
+  (declare (debug t))
   `(progn
      (if org-drill-hide-item-headings-p
          (org-drill-hide-heading-at-point))
