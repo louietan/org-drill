@@ -813,6 +813,7 @@ situation use `org-part-of-drill-entry-p'."
     (member org-drill-question-tag (org-get-tags nil t))))
 
 (defun org-drill-goto-entry (marker)
+  "Switch to the buffer and position of MARKER."
   (switch-to-buffer (marker-buffer marker))
   (goto-char marker))
 
@@ -901,11 +902,15 @@ from the entry at point."
           org-drill-overdue-interval-factor)))
 
 (defun org-drill-entry-due-p (session)
+  "Return non-nil if the entry at point is overdue.
+
+The SESSION can affect the definition of overdue."
   (let ((due (org-drill-entry-days-overdue session)))
     (and (not (null due))
          (not (cl-minusp due)))))
 
 (defun org-drill-entry-new-p ()
+  "Return non-nil if the entry at point is new."
   (and (org-drill-entry-p)
        (let ((item-time (org-get-scheduled-time (point))))
          (null item-time))))
