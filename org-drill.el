@@ -916,50 +916,59 @@ The SESSION can affect the definition of overdue."
          (null item-time))))
 
 (defun org-drill-entry-last-quality (&optional default)
+  "Return the SM quality score for entry at point, or DEFAULT."
   (let ((quality (org-entry-get (point) "DRILL_LAST_QUALITY")))
     (if quality
         (string-to-number quality)
       default)))
 
 (defun org-drill-entry-failure-count ()
+  "Return the SM failure count for entry at point."
   (let ((quality (org-entry-get (point) "DRILL_FAILURE_COUNT")))
     (if quality
         (string-to-number quality)
       0)))
 
 (defun org-drill-entry-average-quality (&optional default)
+  "Return the SM average quality for entry at point."
   (let ((val (org-entry-get (point) "DRILL_AVERAGE_QUALITY")))
     (if val
         (string-to-number val)
       (or default nil))))
 
 (defun org-drill-entry-last-interval (&optional default)
+  "Return the SM last interval for entry at point."
   (let ((val (org-entry-get (point) "DRILL_LAST_INTERVAL")))
     (if val
         (string-to-number val)
       (or default 0))))
 
 (defun org-drill-entry-repeats-since-fail (&optional default)
+  "Return the SM repeats since fail for entry at point."
   (let ((val (org-entry-get (point) "DRILL_REPEATS_SINCE_FAIL")))
     (if val
         (string-to-number val)
       (or default 0))))
 
 (defun org-drill-entry-total-repeats (&optional default)
+  "Return the SM total number of repeats for the entry at point."
   (let ((val (org-entry-get (point) "DRILL_TOTAL_REPEATS")))
     (if val
         (string-to-number val)
       (or default 0))))
 
 (defun org-drill-entry-ease (&optional default)
+  "Return the SM ease for the entry at point."
   (let ((val (org-entry-get (point) "DRILL_EASE")))
     (if val
         (string-to-number val)
       default)))
 
-;;; From http://www.supermemo.com/english/ol/sm5.htm
 (defun org-drill-random-dispersal-factor ()
-  "Returns a random number between 0.5 and 1.5."
+  "Returns a random number between 0.5 and 1.5.
+
+This returns a strange random number distribution. See
+http://www.supermemo.com/english/ol/sm5.htm for details."
   (let ((a 0.047)
         (b 0.092)
         (p (- (cl-random 1.0) 0.5)))
