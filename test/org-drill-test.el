@@ -38,8 +38,16 @@
 
 (ert-deftest find-entries ()
   (should
-   (equal '(2 30 58)
-      (assess-with-find-file
-          (assess-make-related-file
-           (concat this-directory "one-two-three.org"))
-        (org-drill-map-entries (lambda () (point)) 'file nil)))))
+   (equal '(2 38 66)
+	  (assess-with-find-file
+              (assess-make-related-file
+               (concat this-directory "one-two-three.org"))
+            (org-drill-map-entries (lambda () (point)) 'file nil)))))
+
+(ert-deftest find-tagged-entries ()
+  (should
+   (equal '(2)
+	  (assess-with-find-file
+           (assess-make-related-file
+            (concat this-directory "one-two-three.org"))
+           (org-drill-map-entries (lambda () (point)) 'file "tagtest")))))

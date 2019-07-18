@@ -725,7 +725,7 @@ CMD is bound, or nil if it is not bound to a key."
     (apply 'org-map-entries func
            (concat "+" org-drill-question-tag
                    (if (and (stringp org-drill-match)
-                            (not (member '(?+ ?- ?|) (elt org-drill-match 0))))
+                            (not (member (elt org-drill-match 0) '(?+ ?- ?|))))
                        "+" "")
                    (or org-drill-match ""))
            (org-drill-current-scope scope)
