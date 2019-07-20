@@ -66,8 +66,7 @@
 
 (defcustom org-drill-question-tag
   "drill"
-  "Tag which topics must possess in order to be identified as review topics
-by `org-drill'."
+  "Tag for topics which are review topics."
   :group 'org-drill
   :type 'string)
 
@@ -1104,15 +1103,18 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 
 ;;; SM5 Algorithm =============================================================
 (defun org-drill-modify-e-factor (ef quality)
+  "Return new e-factor given existing EF and QUALITY."
   (if (< ef 1.3)
       1.3
     (+ ef (- 0.1 (* (- 5 quality) (+ 0.08 (* (- 5 quality) 0.02)))))))
 
 (defun org-drill-modify-of (of q fraction)
+  "Return modify of."
   (let ((temp (* of (+ 0.72 (* q 0.07)))))
     (+ (* (- 1 fraction) of) (* fraction temp))))
 
 (defun org-drill-set-optimal-factor (n ef of-matrix of)
+  "Set the optimal factor."
   (let ((factors (assoc n of-matrix)))
     (if factors
 	(let ((ef-of (assoc ef (cdr factors))))
@@ -1123,11 +1125,13 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
   of-matrix)
 
 (defun org-drill-initial-optimal-factor-sm5 (n ef)
+  "Return initial optimal factor."
   (if (= 1 n)
       org-drill-sm5-initial-interval
     ef))
 
 (defun org-drill-get-optimal-factor-sm5 (n ef of-matrix)
+  "Return optimal factor."
   (let ((factors (assoc n of-matrix)))
     (or (and factors
              (let ((ef-of (assoc ef (cdr factors))))
@@ -1135,6 +1139,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
         (org-drill-initial-optimal-factor-sm5 n ef))))
 
 (defun org-drill-inter-repetition-interval-sm5 (last-interval n ef &optional of-matrix)
+  "Return repetition interval."
   (let ((of (org-drill-get-optimal-factor-sm5 n ef (or of-matrix
                                              org-drill-sm5-optimal-factor-matrix))))
     (if (= 1 n)
@@ -1144,6 +1149,7 @@ Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), wher
 (defun org-drill-determine-next-interval-sm5 (last-interval n ef quality
                                                   failures meanq total-repeats
                                                   of-matrix &optional delta-days)
+  "Return next interval."
   (if (zerop n) (setq n 1))
   (if (null ef) (setq ef 2.5))
   (cl-assert (> n 0))
@@ -1388,6 +1394,7 @@ of QUALITY."
           next-interval))))))
 
 (defun org-drill-hypothetical-next-review-dates ()
+  "Return hypothetical next review dates."
   (let ((intervals nil))
     (dotimes (q 6)
       (push (max (or (car intervals) 0)
@@ -1811,7 +1818,7 @@ visual overlay, or with the string TEXT if it is supplied."
 
 (defun org-drill-hide-heading-at-point (&optional text)
   (unless (org-at-heading-p)
-    (error "Point is not on a heading."))
+    (error "Point is not on a heading"))
   (save-excursion
     (let ((beg (point)))
       (end-of-line)
@@ -3004,8 +3011,8 @@ exiting them with the `edit' or `quit' options."
            ;; Current drill session is finished, but there are still
            ;; more items which need to be reviewed.
            (y-or-n-p (format
-                      "You have finished the drill session. However, %d items still
-need reviewing. Start a new drill session? "
+                      "You have finished the drill session.  However, %d items still
+need reviewing.  Start a new drill session? "
                       (org-drill-pending-entry-count session))))
       (org-drill-again))
      (t
