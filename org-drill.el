@@ -1546,11 +1546,13 @@ the current topic."
     (reverse drill-sections)))
 
 (defun org-drill-hide-all-subheadings-except (heading-list)
+  "Hide all subheadings except HEADING-LIST."
   (org-drill-hide-subheadings-if
    (lambda () (let ((drill-heading (org-get-heading t)))
            (not (member drill-heading heading-list))))))
 
 (defun org-drill--make-minibuffer-prompt (session prompt)
+  "Make a mini-buffer for the SESSION, with PROMPT."
   (let ((status (cl-first (org-drill-entry-status session)))
         (mature-entry-count (+ (length (oref session young-mature-entries))
                                (length (oref session old-mature-entries))
