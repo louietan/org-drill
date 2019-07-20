@@ -6,7 +6,7 @@ this_dir="$(dirname "$0")"
 source $this_dir/robot.sh
 
 
-card_no=12
+card_no=18
 
 function run_drill {
     ## Org-drill should be running at this point, so give three answers

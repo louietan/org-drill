@@ -131,3 +131,68 @@ This is the body of a multiclozed card:
 
 show1_lastmore
 
+
+* Readme
+
+** Simple Items
+
+***  Item                                                             :drill:
+What is the capital city of Estonia?
+	
+**** The Answer
+Tallinn.
+
+*** Item                                                              :drill:
+
+The capital city of Estonia is [Tallinn].
+
+*** Multi-Close                                                       :drill:
+
+Type 1 hypersensitivity reactions are mediated by [immunoglobulin E||molecule]
+and [mast cells||cell type].
+
+
+*** Twosided                                                          :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: twosided
+    :END:
+
+  Translate this word.
+
+**** Spanish
+  la mujer
+
+**** English
+  the woman
+
+**** Example sentence
+  ¿Quién fue esa mujer?
+  Who was that woman?
+
+
+*** Multisided                                                        :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: multisided
+    :END:
+
+  Translate.
+
+**** Spanish
+  la mesa
+
+**** English
+  the table
+
+**** Picture
+  PICTURE
+
+
+*** Fact                                                              :drill:
+    :PROPERTIES:
+    :DRILL_CARD_TYPE: hide1cloze
+    :END:
+	
+  The capital city of [New Zealand] is [Wellington], which is located in
+  the [North||North/South] Island and has a population of about
+  [400,000].
+
