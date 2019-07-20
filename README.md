@@ -25,21 +25,17 @@ that use it, see:
 -   [Anki](http://ichi2.net/anki/)
 -   [Mnemosyne](http://mnemosyne-proj.org/index.php)
 
-Org-Drill comes bundled with Org mode, in the "contrib" directory. Org-Drill
-also has its own repository, which is updated more regularly than the bundled
-version. The repository is at:
-
-<http://bitbucket.org/eeeickythump/org-drill>
-
 # Installation
+
+Org-Drill is available on MELPA. You can install it with `M-x 
+package-install RET org-drill RET`.
 
 The easiest way is to customise the variable `org-modules` (`M-x
 customize-variables RET org-modules`) and make sure 'drill' is
 ticked. Org-drill will then be loaded when you restart Emacs or restart
 Org-mode.
 
-For manual installation, put the following in your `.emacs`. You will also need
-to make sure that Org's "contrib/lisp" directory is in the emacs load-path.
+For manual installation, put the following in your `.emacs`:
 
     (require 'org-drill)
 
