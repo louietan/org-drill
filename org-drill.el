@@ -1697,10 +1697,12 @@ Consider reformulating the item to make it easier to remember.\n"
 (define-key org-drill-response-mode-map (kbd "C-c C-t") 'org-drill-response-tags)
 
 (defun org-drill-response-complete ()
+  "Complete org-drill response mode."
   (kill-buffer (current-buffer))
   (exit-recursive-edit))
 
 (defun org-drill-response-rtn ()
+  "Exit response mode with return value."
   (interactive)
   (let ((session org-drill-current-session))
     (setf (oref session typed-answer) (buffer-string))
@@ -1708,26 +1710,31 @@ Consider reformulating the item to make it easier to remember.\n"
     (org-drill-response-complete)))
 
 (defun org-drill-response-quit ()
+  "Exit response mode with quit."
   (interactive)
   (oset org-drill-current-session exit-kind 'quit)
   (org-drill-response-complete))
 
 (defun org-drill-response-edit ()
+  "Exit response mode with edit."
   (interactive)
   (oset org-drill-current-session exit-kind 'edit)
   (org-drill-response-complete))
 
 (defun org-drill-response-skip ()
+  "Exit response mode with skip."
   (interactive)
   (oset org-drill-current-session exit-kind 'skip)
   (org-drill-response-complete))
 
 (defun org-drill-response-tags ()
+  "Exit response mode with tags."
   (interactive)
   (oset org-drill-current-session exit-kind 'tags)
   (org-drill-response-complete))
 
 (defun org-drill-response-get-buffer-create ()
+  "Create a response buffer."
   (let ((local-current-input-method
          current-input-method)
         (cb (current-buffer)))
@@ -1739,6 +1746,7 @@ Consider reformulating the item to make it easier to remember.\n"
       (current-buffer))))
 
 (defun org-drill-presentation-prompt-in-buffer (session &optional prompt)
+  "Display drill for SESSION with PROMPT."
   (let* ((item-start-time (current-time))
          (prompt
           (or prompt
@@ -1802,6 +1810,11 @@ Consider reformulating the item to make it easier to remember.\n"
           (read-string full-prompt nil nil nil t))))
 
 (defun org-drill-pos-in-regexp (pos regexp &optional nlines)
+  "Return non-nil if POS is within REGEXP.
+
+Normally only the current line is checked but NLINES can be checked instead.
+
+If non-nil, returns (BEG . END) where beginning and end of the match are."
   (save-excursion
     (goto-char pos)
     (org-in-regexp regexp nlines)))
