@@ -1020,7 +1020,8 @@ or give it different tags or properties, for example.
 
 # Author
 
-Org-Drill is maintained by Phillip Lord
+Org-Drill is maintained by Phillip Lord.
+
 Org-Drill was originally written by Paul Sexton.
 
 # History
