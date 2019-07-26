@@ -1832,6 +1832,7 @@ visual overlay, or with the string TEXT if it is supplied."
       (overlay-put ovl 'display text))))
 
 (defun org-drill-hide-heading-at-point (&optional text)
+  "Hide the heading at point."
   (unless (org-at-heading-p)
     (error "Point is not on a heading"))
   (save-excursion
@@ -1840,6 +1841,7 @@ visual overlay, or with the string TEXT if it is supplied."
       (org-drill-hide-region beg (point) text))))
 
 (defun org-drill-hide-comments ()
+  "Hide comments."
   (save-excursion
     (while (re-search-forward "^#.*$" nil t)
       (org-drill-hide-region (match-beginning 0) (match-end 0)))))
