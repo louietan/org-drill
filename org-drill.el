@@ -661,7 +661,9 @@ regardless of whether the test was successful.")
   (if (= 2 (length args))
       ;; and we don't want any byte compile errors
       (if (fboundp 'org-get-local-tags) (org-get-local-tags))
-    (funcall orig-fun)))
+    ;; the non-arg version doesn't return inherited tags, but
+    ;; get-tags-at does.
+    (org-get-tags-at)))
 
 (when (= 8 (car (version-to-list org-version)))
   ;; Shut up package-lint
