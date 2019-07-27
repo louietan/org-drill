@@ -1847,13 +1847,14 @@ visual overlay, or with the string TEXT if it is supplied."
       (org-drill-hide-region (match-beginning 0) (match-end 0)))))
 
 (defun org-drill-unhide-text ()
-  ;; This will also unhide the item's heading.
+  "Unhide text."
   (save-excursion
     (dolist (ovl (overlays-in (point-min) (point-max)))
       (when (eql 'org-drill-hidden-text-overlay (overlay-get ovl 'category))
         (delete-overlay ovl)))))
 
 (defun org-drill-hide-clozed-text ()
+  "Hide clozed text."
   (save-excursion
     (while (re-search-forward org-drill-cloze-regexp nil t)
       ;; Don't hide:
@@ -1901,6 +1902,7 @@ visual overlay, or with the string TEXT if it is supplied."
                    "")))))))
 
 (defun org-drill-hide-cloze-hints ()
+  "Hide cloze hints."
   (save-excursion
     (while (re-search-forward org-drill-cloze-regexp nil t)
       (unless (or (save-match-data
@@ -1953,6 +1955,7 @@ Note: does not actually alter the item."
       (overlay-put ovl 'display text)))))
 
 (defun org-drill-unreplace-entry-text ()
+  "Unreplace entry text."
   (save-excursion
     (dolist (ovl (overlays-in (point-min) (point-max)))
       (when (eql 'org-drill-replaced-text-overlay (overlay-get ovl 'category))
@@ -1980,6 +1983,7 @@ Note: does not actually alter the item."
       (overlay-put ovl 'display (nth i replacements)))))
 
 (defmacro org-drill-with-replaced-entry-heading (heading &rest body)
+  "Display HEADING in place of current entry heading, and execute BODY."
   `(progn
      (org-drill-replace-entry-heading ,heading)
      (unwind-protect
@@ -1994,12 +1998,14 @@ Note: does not actually alter the item."
   (org-drill-hide-heading-at-point heading))
 
 (defun org-drill-unhide-clozed-text ()
+  "Show clozed text."
   (save-excursion
     (dolist (ovl (overlays-in (point-min) (point-max)))
       (when (eql 'org-drill-cloze-overlay-defaults (overlay-get ovl 'category))
         (delete-overlay ovl)))))
 
 (defun org-drill-get-entry-text (&optional keep-properties-p)
+  "Return the text of the current entry."
   (let ((text (org-agenda-get-some-entry-text (point-marker) 100)))
     (if keep-properties-p
         text
@@ -2010,6 +2016,7 @@ Note: does not actually alter the item."
 
 ;; This version is about 5x faster than the old version, above.
 (defun org-drill-entry-empty-p ()
+  "Return non-nil if the current entry is empty."
   (save-excursion
     (org-back-to-heading t)
     (let ((lim (save-excursion
@@ -2029,6 +2036,7 @@ Note: does not actually alter the item."
 ;; topic, and should return t if the user chose to see the answer and rate their
 ;; recall, nil if they chose to quit.
 (defun org-drill-present-simple-card (session)
+  "Present a simple card."
   (org-drill-with-hidden-comments
    (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
@@ -2041,6 +2049,10 @@ Note: does not actually alter the item."
        (org-drill-hide-subheadings-if 'org-drill-entry-p))))))
 
 (defun org-drill-present-default-answer (session reschedule-fn)
+  "Present a default answer.
+
+SESSION is the current session.
+RESCHEDULE-FN is the function to reschedule."
   (prog1 (cond
           ((oref session drill-answer)
            (org-drill-with-replaced-entry-text
@@ -2058,6 +2070,7 @@ Note: does not actually alter the item."
             (funcall reschedule-fn session))))))
 
 (defun org-drill-present-simple-card-with-typed-answer (session)
+  "Present a simple card with a typed answer."
   (org-drill-with-hidden-comments
    (org-drill-with-hidden-cloze-hints
     (org-drill-with-hidden-cloze-text
@@ -2070,6 +2083,7 @@ Note: does not actually alter the item."
        (org-drill-hide-subheadings-if 'org-drill-entry-p))))))
 
 (defun org-drill--show-latex-fragments ()
+  "Show latex fragment."
   (org-remove-latex-fragment-image-overlays)
   (org-toggle-latex-fragment '(4)))
 
