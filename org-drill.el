@@ -402,14 +402,6 @@ Available choices are:
   :group 'org-drill
   :type '(choice (const sm2) (const sm5) (const simple8)))
 
-(defcustom org-drill-optimal-factor-matrix
-  nil
-  "Obsolete and will be removed in future. The SM5 optimal factor
-matrix data is now stored in the variable
-`org-drill-sm5-optimal-factor-matrix'."
-  :group 'org-drill
-  :type 'sexp)
-
 (persist-defvar org-drill-sm5-optimal-factor-matrix
   nil
   "DO NOT CHANGE THE VALUE OF THIS VARIABLE.
@@ -419,15 +411,6 @@ algorithm. The matrix is saved at the end of each drill session.
 
 Over time, values in the matrix will adapt to the individual user's
 pace of learning.")
-
-
-(defun org-drill--transfer-optimal-factor-matrix ()
-  (if (and org-drill-optimal-factor-matrix
-           (null org-drill-sm5-optimal-factor-matrix))
-      (setq org-drill-sm5-optimal-factor-matrix
-            org-drill-optimal-factor-matrix)))
-
-(add-hook 'after-init-hook 'org-drill--transfer-optimal-factor-matrix)
 
 (defcustom org-drill-sm5-initial-interval
   4.0
