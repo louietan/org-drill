@@ -373,15 +373,16 @@ directory            All files with the extension '.org' in the same
 
 (defcustom org-drill-match
   nil
-  "If non-nil, a string specifying a tags/property/TODO query. During
-drill sessions, only items that match this query will be considered."
+  "If non-nil, a string specifying a tags/property/TODO query.
+
+During drill sessions, only items that match this query will be
+considered."
   :group 'org-drill
   :type '(choice (const nil) string))
 
 (defcustom org-drill-save-buffers-after-drill-sessions-p
   t
-  "If non-nil, prompt to save all modified buffers after a drill session
-finishes."
+  "If non-nil, prompt to save all modified buffers when a session ends."
   :group 'org-drill
   :type 'boolean)
 
@@ -391,11 +392,11 @@ finishes."
 Available choices are:
 - SM2 :: the SM2 algorithm, used in SuperMemo 2.0
 - SM5 :: the SM5 algorithm, used in SuperMemo 5.0
-- Simple8 :: a modified version of the SM8 algorithm. SM8 is used in
+- Simple8 :: a modified version of the SM8 algorithm.  SM8 is used in
   SuperMemo 98. The version implemented here is simplified in that while it
   'learns' the difficulty of each item using quality grades and number of
   failures, it does not modify the matrix of values that
-  governs how fast the inter-repetition intervals increase. A method for
+  governs how fast the inter-repetition intervals increase.  A method for
   adjusting intervals when items are reviewed early or late has been taken
   from SM11, a later version of the algorithm, and included in Simple8."
   :group 'org-drill
