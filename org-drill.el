@@ -86,22 +86,25 @@ Nil means unlimited."
 
 (defcustom org-drill-item-count-includes-failed-items-p
   nil
-  "If non-nil, when you fail an item it still counts towards the
-count of items reviewed for the current session. If nil (default),
-only successful items count towards this total."
+  "If non-nil, count failed items in overall count.
+
+If nil (default), only successful items count towards this
+total."
   :group 'org-drill
   :type 'boolean)
 
 (defcustom org-drill-failure-quality
   2
-  "If the quality of recall for an item is this number or lower,
+  "Lower bound for an recall to be marked as failure.
+
+If the quality of recall for an item is this number or lower,
 it is regarded as an unambiguous failure, and the repetition
 interval for the card is reset to 0 days.  If the quality is higher
 than this number, it is regarded as successfully recalled, but the
 time interval to the next repetition will be lowered if the quality
 was near to a fail.
 
-By default this is 2, for SuperMemo-like behaviour. For
+By default this is 2, for SuperMemo-like behaviour.  For
 Mnemosyne-like behaviour, set it to 1.  Other values are not
 really sensible."
   :group 'org-drill
@@ -109,8 +112,10 @@ really sensible."
 
 (defcustom org-drill-forgetting-index
   10
-  "What percentage of items do you consider it is 'acceptable' to
-forget each drill session? The default is 10%. A warning message
+  "The maximum percentage of items that can be forgotten before a warning.
+
+What percentage of items do you consider it is 'acceptable' to
+forget each drill session? The default is 10%.  A warning message
 is displayed at the end of the session if the percentage forgotten
 climbs above this number."
   :group 'org-drill
@@ -118,7 +123,9 @@ climbs above this number."
 
 (defcustom org-drill-leech-failure-threshold
   15
-  "If an item is forgotten more than this many times, it is tagged
+  "Threshold before a item is defined as a leech.
+
+If an item is forgotten more than this many times, it is tagged
 as a 'leech' item."
   :group 'org-drill
   :type '(choice integer (const nil)))
@@ -152,44 +159,42 @@ Possible values:
 
 (defcustom org-drill-use-visible-cloze-face-p
   nil
-  "Use a special face to highlight cloze-deleted text in org mode
-buffers?"
+  "Highlight cloze-deleted text."
   :group 'org-drill
   :type 'boolean)
 
 (defcustom org-drill-hide-item-headings-p
   nil
-  "Conceal the contents of the main heading of each item during drill
-sessions? You may want to enable this behaviour if item headings or tags
+  "If non-nil, conceal headings during a drill session.
+
+You may want to enable this behaviour if item headings or tags
 contain information that could 'give away' the answer."
   :group 'org-drill
   :type 'boolean)
 
 (defcustom org-drill-new-count-color
   "royal blue"
-  "Foreground colour used to display the count of remaining new items
-during a drill session."
+  "Foreground colour for remaining new items."
   :group 'org-drill
   :type 'color)
 
 (defcustom org-drill-mature-count-color
   "green"
-  "Foreground colour used to display the count of remaining mature items
-during a drill session. Mature items are due for review, but are not new."
+  "Foreground colour for remaining mature items.
+
+Mature items are due for review, but are not new."
   :group 'org-drill
   :type 'color)
 
 (defcustom org-drill-failed-count-color
   "red"
-  "Foreground colour used to display the count of remaining failed items
-during a drill session."
+  "Foreground colour for remaining failed items."
   :group 'org-drill
   :type 'color)
 
 (defcustom org-drill-done-count-color
   "sienna"
-  "Foreground colour used to display the count of reviewed items
-during a drill session."
+  "Foreground colour for reviewed items."
   :group 'org-drill
   :type 'color)
 
@@ -223,12 +228,10 @@ during a drill session."
 (add-hook 'org-font-lock-set-keywords-hook 'org-drill-add-cloze-fontification)
 
 (defvar org-drill-hint-separator "||"
-  "String which, if it occurs within a cloze expression, signifies that the
-rest of the expression after the string is a `hint', to be displayed instead of
-the hidden cloze during a test.")
+  "Delimiter in cloze expression for hints.")
 
 (defun org-drill--compute-cloze-regexp ()
-  "Returns a regexp that detects clozes."
+  "Return a regexp that detects clozes."
   (concat "\\("
           (regexp-quote org-drill-left-cloze-delimiter)
           "[[:cntrl:][:graph:][:space:]]+?\\)\\(\\|"
@@ -238,7 +241,7 @@ the hidden cloze during a test.")
           "\\)"))
 
 (defun org-drill--compute-cloze-keywords ()
-  "Returns a fontification spec that detects cloze keywords."
+  "Return a fontification spec that detects cloze keywords."
   (list (list (org-drill--compute-cloze-regexp)
               (cl-copy-list '(1 'org-drill-visible-cloze-face nil))
               (cl-copy-list '(2 'org-drill-visible-cloze-hint-face t))
@@ -259,18 +262,15 @@ This is a buffer-local variable.")
 ;; Variables defining what keys can be pressed during drill sessions to quit the
 ;; session, edit the item, etc.
 (defvar org-drill--quit-key ?q
-  "If this character is pressed during a drill session, quit the session.")
+  "Character to quit the session.")
 (defvar org-drill--edit-key ?e
-  "If this character is pressed during a drill session, suspend the session
-with the cursor at the current item..")
+  "Character to suspend the session.")
 (defvar org-drill--help-key ??
-  "If this character is pressed during a drill session, show help.")
+  "Character to show help.")
 (defvar org-drill--skip-key ?s
-  "If this character is pressed during a drill session, skip to the next
-item.")
+  "Character to skip to the next item.")
 (defvar org-drill--tags-key ?t
-  "If this character is pressed during a drill session, edit the tags for
-the current item.")
+  "Character to edit the tags.")
 
 (defcustom org-drill-card-type-alist
   '((nil org-drill-present-simple-card)
@@ -296,8 +296,9 @@ the current item.")
      org-drill-show-answer-noun-declension)
     ("spanish_verb" org-drill-present-spanish-verb)
     ("translate_number" org-drill-present-translate-number))
-  "Alist associating card types with presentation functions. Each
-entry in the alist takes the form:
+  "Alist associating card types with presentation functions.
+
+Each entry in the alist takes the form:
 
 ;;; (CARDTYPE QUESTION-FN [ANSWER-FN DRILL-EMPTY-P])
 
@@ -308,10 +309,10 @@ value.
 When supplied, ANSWER-FN is a function that takes one argument --
 that argument is a function of no arguments, which when called,
 prompts the user to rate their recall and performs rescheduling
-of the drill item. ANSWER-FN is called with the point on the
+of the drill item.  ANSWER-FN is called with the point on the
 active item's heading, just prior to displaying the item's
-'answer'. It can therefore be used to modify the appearance of
-the answer. ANSWER-FN must call its argument before returning.
+'answer'.  It can therefore be used to modify the appearance of
+the answer.  ANSWER-FN must call its argument before returning.
 
 When supplied, DRILL-EMPTY-P is a boolean value, default nil.
 When non-nil, cards of this type will be presented during tests
@@ -331,8 +332,8 @@ When a card with the relevant TAG is tested, QUESTION-PRESENTER
 will be called when the card is displayed to the user,
 ANSWER-PRESENTER will be called with point in the entry when the
 answer is displayed to the user and CLEANER will be called when
-the answer is accepted. In all cases, point will be in the card
-in question when the function is called. All values may be nil in
+the answer is accepted.  In all cases, point will be in the card
+in question when the function is called.  All values may be nil in
 which case no function will be called."
   :group 'org-drill
   :type '(alist :key-type (choice string (const nil))
@@ -340,8 +341,9 @@ which case no function will be called."
 
 (defcustom org-drill-scope
   'file
-  "The scope in which to search for drill items when conducting a
-drill session. This can be any of:
+  "The scope to search for drill items in a session.
+
+This can be any of:
 
 file                 The current buffer, respecting the restriction if any.
                      This is the default.
@@ -354,8 +356,7 @@ agenda-with-archives All agenda files with any archive files associated
 directory            All files with the extension '.org' in the same
                      directory as the current file (includes the current
                      file if it is an .org file.)
- (FILE1 FILE2 ...)   If this is a list, all files in the list will be scanned.
-"
+ (FILE1 FILE2 ...)   If this is a list, all files in the list will be scanned."
   ;; Note -- meanings differ slightly from the argument to org-map-entries:
   ;; 'file' means current file/buffer, respecting any restriction
   ;; 'file-no-restriction' means current file/buffer, ignoring restrictions
