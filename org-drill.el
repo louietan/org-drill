@@ -55,6 +55,7 @@
 (require 'eieio)
 (require 'org)
 (require 'org-agenda)
+(require 'org-element)
 (require 'org-id)
 (require 'persist)
 (require 'seq)
@@ -209,6 +210,7 @@ Mature items are due for review, but are not new."
   "String used within org buffers to delimit cloze deletions."
   :group 'org-drill
   :type 'string)
+
 
 (setplist 'org-drill-cloze-overlay-defaults
           `(display ,(format "%s...%s"
@@ -1840,20 +1842,22 @@ visual overlay, or with the string TEXT if it is supplied."
       (when (eql 'org-drill-hidden-text-overlay (overlay-get ovl 'category))
         (delete-overlay ovl)))))
 
+(defun org-drill-context-clozable-p ()
+  "Check if current context is suitable for cloze.
+
+For example, text matches the `org-drill-cloze-regexp' might be
+in a link, an example block or a latex fragment, in which case
+they should not be considered as cloze deletions."
+  (save-match-data
+    (not
+     (memq (car (org-element-context))
+           '(code example-block latex-environment latex-fragment link src-block verbatim)))))
+
 (defun org-drill-hide-clozed-text ()
   "Hide clozed text."
   (save-excursion
     (while (re-search-forward org-drill-cloze-regexp nil t)
-      ;; Don't hide:
-      ;; - org links, partly because they might contain inline
-      ;;   images which we want to keep visible.
-      ;; - LaTeX math fragments
-      ;; - the contents of SRC blocks
-      (unless (save-match-data
-                (or (org-drill-pos-in-regexp (match-beginning 0)
-                                       org-bracket-link-regexp 1)
-                    (org-in-src-block-p)
-                    (org-inside-LaTeX-fragment-p)))
+      (when (org-drill-context-clozable-p)
         (org-drill-hide-matched-cloze-text)))))
 
 (defun org-drill-hide-matched-cloze-text ()
@@ -1892,10 +1896,8 @@ visual overlay, or with the string TEXT if it is supplied."
   "Hide cloze hints."
   (save-excursion
     (while (re-search-forward org-drill-cloze-regexp nil t)
-      (unless (or (save-match-data
-                    (org-drill-pos-in-regexp (match-beginning 0)
-                                       org-bracket-link-regexp 1))
-                  (null (match-beginning 2))) ; hint subexpression matched
+      (when (and (org-drill-context-clozable-p)
+                 (match-beginning 2)) ; hint subexpression matched
         (org-drill-hide-region (match-beginning 2) (match-end 2))))))
 
 (defmacro org-drill-with-replaced-entry-text (text &rest body)
@@ -2146,12 +2148,8 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
       (save-excursion
         (goto-char body-start)
         (while (re-search-forward org-drill-cloze-regexp item-end t)
-          (let ((in-regexp? (save-match-data
-                              (org-drill-pos-in-regexp (match-beginning 0)
-                                                 org-bracket-link-regexp 1))))
-            (unless (or in-regexp?
-                        (org-inside-LaTeX-fragment-p))
-              (cl-incf match-count)))))
+          (when (org-drill-context-clozable-p)
+            (cl-incf match-count))))
       (if (cl-minusp number-to-hide)
           (setq number-to-hide (+ match-count number-to-hide)))
       (when (cl-plusp match-count)
@@ -2177,10 +2175,7 @@ items if FORCE-SHOW-FIRST or FORCE-SHOW-LAST is non-nil)."
             (goto-char body-start)
             (setq cnt 0)
             (while (re-search-forward org-drill-cloze-regexp item-end t)
-              (unless (save-match-data
-                        (or (org-drill-pos-in-regexp (match-beginning 0)
-                                               org-bracket-link-regexp 1)
-                            (org-inside-LaTeX-fragment-p)))
+              (when (org-drill-context-clozable-p)
                 (cl-incf cnt)
                 (if (memq cnt match-nums)
                     (org-drill-hide-matched-cloze-text)))))))
@@ -2216,12 +2211,8 @@ the second to last, etc."
       (save-excursion
         (goto-char body-start)
         (while (re-search-forward org-drill-cloze-regexp item-end t)
-          (let ((in-regexp? (save-match-data
-                              (org-drill-pos-in-regexp (match-beginning 0)
-                                                 org-bracket-link-regexp 1))))
-            (unless (or in-regexp?
-                        (org-inside-LaTeX-fragment-p))
-              (cl-incf match-count)))))
+          (when (org-drill-context-clozable-p)
+            (cl-incf match-count))))
       (if (cl-minusp to-hide)
           (setq to-hide (+ 1 to-hide match-count)))
       (cond
@@ -2233,13 +2224,7 @@ the second to last, etc."
           (goto-char body-start)
           (setq cnt 0)
           (while (re-search-forward org-drill-cloze-regexp item-end t)
-            (unless (save-match-data
-                      ;; Don't consider this a cloze region if it is part of an
-                      ;; org link, or if it occurs inside a LaTeX math
-                      ;; fragment
-                      (or (org-drill-pos-in-regexp (match-beginning 0)
-                                             org-bracket-link-regexp 1)
-                          (org-inside-LaTeX-fragment-p)))
+            (when (org-drill-context-clozable-p)
               (cl-incf cnt)
               (if (= cnt to-hide)
                   (org-drill-hide-matched-cloze-text)))))))
