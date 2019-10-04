@@ -589,7 +589,10 @@ revealing the contents of the drilled item.
 This variable is useful for card types that compute their answers
 -- for example, a card type that asks the student to translate a
 random number to another language.")
-   (end-pos :initform nil))
+   (end-pos :initform nil)
+   (card-side
+    :initform 0
+    :documentation "Side the of card being drilled."))
   :documentation "An org-drill session object carries data about
   the current state of a particular org-drill session." )
 
@@ -612,7 +615,7 @@ This variable is not functionally important, but is used for
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
     "DRILL_TOTAL_REPEATS" "DRILL_FAILURE_COUNT" "DRILL_AVERAGE_QUALITY"
-    "DRILL_EASE" "DRILL_LAST_QUALITY" "DRILL_LAST_REVIEWED"))
+    "DRILL_EASE" "DRILL_LAST_QUALITY" "DRILL_LAST_REVIEWED" "DRILL_LAST_SIDE"))
 
 (defvar org-drill--lapse-very-overdue-entries-p nil
   "If non-nil, entries more than 90 days overdue are regarded as 'lapsed'.
@@ -1482,7 +1485,10 @@ of QUALITY."
                 (message "Next review in %d days"
                          (- (time-to-days scheduled-time)
                             (time-to-days (current-time))))
-                (sit-for 0.5)))))
+                (sit-for 0.5)))
+            (when (> (oref session card-side) 0)
+              (org-set-property "DRILL_LAST_SIDE" (format "%d" (oref session card-side))))))
+          (setf (oref session card-side) 0)
           (org-set-property "DRILL_LAST_QUALITY" (format "%d" quality))
           (org-set-property "DRILL_LAST_REVIEWED"
                             (org-drill-time-to-inactive-org-timestamp (current-time))))
@@ -2090,9 +2096,12 @@ RESCHEDULE-FN is the function to reschedule."
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
-           (goto-char (nth (cl-random (min 2 (length drill-sections)))
-                           drill-sections))
-           (org-show-subtree)))
+           (let ((last-side (mod (string-to-number
+                             (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
+                            (min 2 (length drill-sections)))))
+             (goto-char (nth last-side drill-sections))
+             (setf (oref session card-side) (1+ last-side))
+             (org-show-subtree))))
        (org-drill--show-latex-fragments)
        (ignore-errors
          (org-display-inline-images t))
@@ -2107,8 +2116,12 @@ RESCHEDULE-FN is the function to reschedule."
      (let ((drill-sections (org-drill-hide-all-subheadings-except nil)))
        (when drill-sections
          (save-excursion
-           (goto-char (nth (cl-random (length drill-sections)) drill-sections))
-           (org-show-subtree)))
+           (let ((last-side (mod (string-to-number
+                             (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
+                            (length drill-sections))))
+             (goto-char (nth last-side drill-sections))
+             (setf (oref session card-side) (1+ last-side))
+             (org-show-subtree))))
        (org-drill--show-latex-fragments)
        (ignore-errors
          (org-display-inline-images t))
