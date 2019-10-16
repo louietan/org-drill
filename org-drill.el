@@ -2072,7 +2072,7 @@ RESCHEDULE-FN is the function to reschedule."
 (defun org-drill--show-latex-fragments ()
   "Show latex fragment."
   (org-remove-latex-fragment-image-overlays)
-  (org-toggle-latex-fragment '(4)))
+  (org-toggle-latex-fragment))
 
 (defun org-drill-present-two-sided-card (session)
   (org-drill-with-hidden-comments
