@@ -2053,6 +2053,13 @@ RESCHEDULE-FN is the function to reschedule."
            (ignore-errors
              (org-display-inline-images t))
            (org-cycle-hide-drawers 'all)
+           (org-remove-latex-fragment-image-overlays)
+           (save-excursion
+             (org-mark-subtree)
+             (let ((beg (region-beginning))
+                   (end (region-end)))
+               (org--latex-preview-region beg end))
+             (deactivate-mark))
            (org-drill-with-hidden-cloze-hints
             (funcall reschedule-fn session))))))
 
@@ -2413,7 +2420,7 @@ See `org-drill' for more details."
                  (rtn
                   (cond
                    ((null presentation-fn)
-                   (message "%s:%d: Unrecognised card type '%s', skipping..."
+                    (message "%s:%d: Unrecognised card type '%s', skipping..."
                              (buffer-name) (point) card-type)
                     (sit-for 0.5)
                     'skip)
@@ -2440,7 +2447,6 @@ See `org-drill' for more details."
              (apply-partially 'org-drill-card-tag-caller 3)
              tags)
             (cl-incf org-drill-cards-in-this-emacs)
-            (org-remove-latex-fragment-image-overlays)
             rtn))))))
 
 (defun org-drill-entries-pending-p (session)
