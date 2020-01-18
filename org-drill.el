@@ -72,7 +72,7 @@
 
 (defcustom org-drill-maximum-items-per-session
   30
-  "Eaqch drill session will present at most this many topics for review.
+  "Each drill session will present at most this many topics for review.
 Nil means unlimited."
   :group 'org-drill
   :type '(choice integer (const nil)))
