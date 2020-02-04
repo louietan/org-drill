@@ -400,9 +400,10 @@ Available choices are:
   failures, it does not modify the matrix of values that
   governs how fast the inter-repetition intervals increase.  A method for
   adjusting intervals when items are reviewed early or late has been taken
-  from SM11, a later version of the algorithm, and included in Simple8."
+  from SM11, a later version of the algorithm, and included in Simple8.
+- SM2-Anki :: the Anki variation of the SM2 algorithm."
   :group 'org-drill
-  :type '(choice (const sm2) (const sm5) (const simple8)))
+  :type '(choice (const sm2) (const sm5) (const simple8) (const sm2-anki)))
 
 (persist-defvar org-drill-sm5-optimal-factor-matrix
   nil
@@ -539,7 +540,9 @@ to preserve the formatting in a displayed table, for example."
     :initform 0.0
     :documentation "Time at which the session started"
     :type float)
-   (new-entries :initform nil)
+   (new-entries
+    :initform nil
+    :documentation "List of marker for entries that you have not seen yet.")
    (dormant-entry-count :initform 0)
    (due-entry-count :initform 0)
    (overdue-entry-count :initform 0)
@@ -558,8 +561,13 @@ interval was <= ORG-DRILL-DAYS-BEFORE-OLD days.")
     :initform nil
     :documentation "List of markers for mature entries whose last inter-repetition
 interval was greater than ORG-DRILL-DAYS-BEFORE-OLD days.")
-   (failed-entries :initform nil)
-   (again-entries :initform nil)
+   (prior-entries
+    :initform nil
+    :documentation "List of markers for entries that are not finished in a prior session.")
+   (learning-entries
+    :initform nil
+    :documentation "List of markers for entries to learn/relearn in this session.")
+   (learning-data :initform (make-hash-table :test 'equal))
    (done-entries :initform nil)
    (current-item
     :initform nil
@@ -589,7 +597,9 @@ revealing the contents of the drilled item.
 This variable is useful for card types that compute their answers
 -- for example, a card type that asks the student to translate a
 random number to another language.")
-   (end-pos :initform nil)
+   (end-pos
+    :initform nil
+    :documentation ":quit or position of the last drill session.")
    (card-side
     :initform 0
     :documentation "Side the of card being drilled."))
@@ -615,7 +625,8 @@ This variable is not functionally important, but is used for
 (defvar org-drill-scheduling-properties
   '("LEARN_DATA" "DRILL_LAST_INTERVAL" "DRILL_REPEATS_SINCE_FAIL"
     "DRILL_TOTAL_REPEATS" "DRILL_FAILURE_COUNT" "DRILL_AVERAGE_QUALITY"
-    "DRILL_EASE" "DRILL_LAST_QUALITY" "DRILL_LAST_REVIEWED" "DRILL_LAST_SIDE"))
+    "DRILL_EASE" "DRILL_LAST_QUALITY" "DRILL_LAST_REVIEWED"
+    "DRILL_LAST_SIDE" "DRILL_REPS_LEFT"))
 
 (defvar org-drill--lapse-very-overdue-entries-p nil
   "If non-nil, entries more than 90 days overdue are regarded as 'lapsed'.
@@ -638,7 +649,7 @@ regardless of whether the test was successful.")
 (put 'org-drill-use-visible-cloze-face-p 'safe-local-variable 'booleanp)
 (put 'org-drill-hide-item-headings-p 'safe-local-variable 'booleanp)
 (put 'org-drill-spaced-repetition-algorithm 'safe-local-variable
-     '(lambda (val) (memq val '(simple8 sm5 sm2))))
+     '(lambda (val) (memq val '(simple8 sm5 sm2 sm2-anki))))
 (put 'org-drill-sm5-initial-interval 'safe-local-variable 'floatp)
 (put 'org-drill-add-random-noise-to-intervals-p 'safe-local-variable 'booleanp)
 (put 'org-drill-adjust-intervals-for-early-and-late-repetitions-p
@@ -826,6 +837,14 @@ drill entry."
     (unless (org-up-heading-safe)
       (error "Cannot find a parent heading that is marked as a drill entry"))))
 
+(defsubst org-drill-failure-quality ()
+  (cl-case org-drill-spaced-repetition-algorithm
+    (sm2-anki 1)
+    (t org-drill-failure-quality)))
+
+(defsubst org-drill-failure-quality-p (quality)
+  (<= quality (org-drill-failure-quality)))
+
 (defun org-drill-entry-leech-p ()
   "Is the current entry a 'leech item'?"
   (and (org-drill-entry-p)
@@ -855,6 +874,7 @@ drill entry."
   that we wish to skip, or if we are in cram mode and have already reviewed
   the item within the last few hours.
 - 0 if the item is new, or if it scheduled for review today.
+- A negative float - item is scheduled today but at a later time.
 - A negative integer - item is scheduled that many days in the future.
 - A positive integer - item is scheduled that many days in the past."
   (cond
@@ -865,7 +885,10 @@ drill entry."
                (>= hours org-drill-cram-hours))
            0)))
    (t
-    (let ((item-time (org-get-scheduled-time (point))))
+    (let* ((item-time (org-get-scheduled-time (point)))
+           (now (current-time))
+           (daysi (- (time-to-days now) (time-to-days item-time)))
+           (daysf (time-to-number-of-days (time-subtract now item-time))))
       (cond
        ((or (not (org-drill-entry-p))
             (and (eql 'skip org-drill-leech-method)
@@ -874,8 +897,9 @@ drill entry."
        ((null item-time)                ; not scheduled -> due now
         0)
        (t
-        (- (time-to-days (current-time))
-           (time-to-days item-time))))))))
+        (cond
+         ((zerop daysi) (if (cl-minusp daysf) daysf 0))
+         (t daysi))))))))
 
 (defun org-drill-entry-overdue-p (session &optional days-overdue last-interval)
   "Returns true if entry that is scheduled DAYS-OVERDUE dasy in the past,
@@ -886,7 +910,7 @@ from the entry at point."
     (setq days-overdue (org-drill-entry-days-overdue session)))
   (unless last-interval
     (setq last-interval (org-drill-entry-last-interval 1)))
-  (and (numberp days-overdue)
+  (and (integerp days-overdue)
        (> days-overdue 1)               ; enforce a sane minimum 'overdue' gap
        ;;(> due org-drill-days-before-overdue)
        (> (/ (+ days-overdue last-interval 1.0) last-interval)
@@ -903,8 +927,7 @@ The SESSION can affect the definition of overdue."
 (defun org-drill-entry-new-p ()
   "Return non-nil if the entry at point is new."
   (and (org-drill-entry-p)
-       (let ((item-time (org-get-scheduled-time (point))))
-         (null item-time))))
+       (zerop (org-drill-entry-total-repeats))))
 
 (defun org-drill-entry-last-quality (&optional default)
   "Return the SM quality score for entry at point, or DEFAULT."
@@ -955,6 +978,10 @@ The SESSION can affect the definition of overdue."
         (string-to-number val)
       default)))
 
+(defun org-drill-entry-reps-left ()
+  "Return the reps left for the entry at point."
+  (read (or (org-entry-get (point) "DRILL_REPS_LEFT") "(0 0)")))
+
 (defun org-drill-random-dispersal-factor ()
   "Returns a random number between 0.5 and 1.5.
 
@@ -1002,6 +1029,7 @@ in the matrix."
 - AVERAGE-QUALITY is the mean quality of recall of the item over
   all its repetitions, successful and unsuccessful.
 - EASE is a number reflecting how easy the item is to learn. Higher is easier.
+- REPS-LEFT is a number of steps left for a learning entry.
 "
   (let ((learn-str (org-entry-get (point) "LEARN_DATA"))
         (repeats (org-drill-entry-total-repeats :missing)))
@@ -1015,20 +1043,21 @@ in the matrix."
               (nth 1 learn-data)
               (org-drill-entry-last-quality)
               (nth 2 learn-data)        ; EF
-              )))
+              '(0 0))))
      ((not (eql :missing repeats))
       (list (org-drill-entry-last-interval)
             (org-drill-entry-repeats-since-fail)
             (org-drill-entry-failure-count)
             (org-drill-entry-total-repeats)
             (org-drill-entry-average-quality)
-            (org-drill-entry-ease)))
+            (org-drill-entry-ease)
+            (org-drill-entry-reps-left)))
      (t  ; virgin item
-      (list 0 0 0 0 nil nil)))))
+      (list 0 0 0 0 nil nil '(0 0))))))
 
 (defun org-drill-store-item-data (last-interval repeats failures
                                                 total-repeats meanq
-                                                ease)
+                                                ease reps-left)
   "Stores the given data in the item at point."
   (org-entry-delete (point) "LEARN_DATA")
   (org-set-property "DRILL_LAST_INTERVAL"
@@ -1039,7 +1068,14 @@ in the matrix."
   (org-set-property "DRILL_AVERAGE_QUALITY"
                     (number-to-string (org-drill-round-float meanq 3)))
   (org-set-property "DRILL_EASE"
-                    (number-to-string (org-drill-round-float ease 3))))
+                    (number-to-string (org-drill-round-float ease 3)))
+  (when reps-left
+    (if (zerop (cl-second reps-left))
+        (org-entry-delete (point) "DRILL_REPS_LEFT")
+      (org-set-property "DRILL_REPS_LEFT" (prin1-to-string reps-left)))))
+
+(cl-defgeneric org-drill-add-noise-to-interval (interval)
+  interval)
 
 ;;; SM2 Algorithm =============================================================
 (defun org-drill-determine-next-interval-sm2 (last-interval n ef quality
@@ -1293,11 +1329,33 @@ See the documentation for `org-drill-get-item-data' for a description of these."
      totaln
      )))
 
+(cl-defgeneric org-drill-determine-next-interval (&key
+                                                  quality last-interval ease status
+                                                  failures meanq repeats-since-fail
+                                                  total-repeats of-matrix delta-days
+                                                  &allow-other-keys)
+  "Returns a list: (INTERVAL REPEATS EF FAILURES MEAN TOTAL-REPEATS OFMATRIX), where:
+- INTERVAL is the number of days until the item should next be reviewed
+- REPEATS is incremented by 1.
+- EF is modified based on the recall quality for the item."
+  (cl-ecase org-drill-spaced-repetition-algorithm
+    (sm2 (org-drill-determine-next-interval-sm2 last-interval repeats-since-fail ease
+                                                quality failures meanq total-repeats))
+    (sm5 (org-drill-determine-next-interval-sm5 last-interval repeats-since-fail ease
+                                                quality failures meanq total-repeats
+                                                of-matrix delta-days))
+    (simple8 (org-drill-determine-next-interval-simple8 last-interval repeats-since-fail
+                                                        quality failures meanq
+                                                        total-repeats delta-days))))
+
 ;;; Essentially copied from `org-learn.el', but modified to
 ;;; optionally call the SM2 or simple8 functions.
-(defun org-drill-smart-reschedule (quality &optional days-ahead)
-  "If DAYS-AHEAD is supplied it must be a positive integer. The
-item will be scheduled exactly this many days into the future."
+(defun org-drill-smart-reschedule (status quality &optional interval)
+  "If INTERVAL is a positive integer, the item will be scheduled exactly
+this many days into the future.
+
+If INTERVAL is a negative integer, the item will be scheduled
+ABS(INTERVAL-AHEAD) minutes since now."
   (let ((delta-days (- (time-to-days (current-time))
                        (time-to-days (or (org-get-scheduled-time (point))
                                          (current-time)))))
@@ -1310,26 +1368,26 @@ item will be scheduled exactly this many days into the future."
     (if (stringp weight)
         (setq weight (read weight)))
     (cl-destructuring-bind (last-interval repetitions failures
-                                       total-repeats meanq ease)
+                                          total-repeats meanq ease reps-left)
         (org-drill-get-item-data)
       (cl-destructuring-bind (next-interval repetitions ease
-                                         failures meanq total-repeats
-                                         &optional new-ofmatrix)
-          (cl-case org-drill-spaced-repetition-algorithm
-            (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
-                                              ease quality failures
-                                              meanq total-repeats ofmatrix))
-            (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
-                                              ease quality failures
-                                              meanq total-repeats))
-            (simple8 (org-drill-determine-next-interval-simple8 last-interval repetitions
-                                                      quality failures meanq
-                                                      total-repeats
-                                                      delta-days)))
-        (if (numberp days-ahead)
-            (setq next-interval days-ahead))
+                                            failures meanq total-repeats
+                                            &optional new-ofmatrix reps-left)
+          (org-drill-determine-next-interval :last-interval last-interval
+                                             :repeats-since-fail repetitions
+                                             :status status
+                                             :ease ease
+                                             :quality quality
+                                             :failures failures
+                                             :meanq meanq
+                                             :total-repeats total-repeats
+                                             :of-matrix ofmatrix
+                                             :delta-days delta-days
+                                             :reps-left reps-left)
+        (if (numberp interval)
+            (setq next-interval interval))
 
-        (if (and (null days-ahead)
+        (if (and (null interval)
                  (numberp weight) (cl-plusp weight)
                  (not (cl-minusp next-interval)))
             (setq next-interval
@@ -1337,60 +1395,64 @@ item will be scheduled exactly this many days into the future."
                               (/ (- next-interval last-interval) weight)))))
 
         (org-drill-store-item-data next-interval repetitions failures
-                                   total-repeats meanq ease)
+                                   total-repeats meanq ease reps-left)
 
         (if (eql 'sm5 org-drill-spaced-repetition-algorithm)
             (setq org-drill-sm5-optimal-factor-matrix new-ofmatrix))
 
         (cond
-         ((= 0 days-ahead)
+         ((= 0 next-interval)
           (org-schedule '(4)))
-         ((cl-minusp days-ahead)
-          (org-schedule nil (current-time)))
+         ;; re/learnig at a later time
+         ((cl-minusp next-interval)
+          (org-schedule nil
+                        (format-time-string
+                         (cdr org-time-stamp-formats)
+                         (time-add (current-time)
+                                   (seconds-to-time (* 60 (abs next-interval)))))))
          (t
           (org-schedule nil (time-add (current-time)
                                       (days-to-time
-                                       (round next-interval))))))))))
+                                       (round
+                                        (org-drill-add-noise-to-interval next-interval)))))))))))
 
-(defun org-drill-hypothetical-next-review-date (quality)
+(defun org-drill-hypothetical-next-review-date (status quality)
   "Returns an integer representing the number of days into the future
-that the current item would be scheduled, based on a recall quality
-of QUALITY."
+that the current item would be scheduled."
   (let ((weight (org-entry-get (point) "DRILL_CARD_WEIGHT")))
     (cl-destructuring-bind (last-interval repetitions failures
-                                       total-repeats meanq ease)
+                                          total-repeats meanq ease reps-left)
         (org-drill-get-item-data)
       (if (stringp weight)
           (setq weight (read weight)))
       (cl-destructuring-bind (next-interval _repetitions _ease
-                                         _failures _meanq _total-repeats
-                                         &optional _ofmatrix)
-          (cl-case org-drill-spaced-repetition-algorithm
-            (sm5 (org-drill-determine-next-interval-sm5 last-interval repetitions
-                                              ease quality failures
-                                              meanq total-repeats
-                                              org-drill-sm5-optimal-factor-matrix))
-            (sm2 (org-drill-determine-next-interval-sm2 last-interval repetitions
-                                              ease quality failures
-                                              meanq total-repeats))
-            (simple8 (org-drill-determine-next-interval-simple8 last-interval repetitions
-                                                      quality failures meanq
-                                                      total-repeats)))
+                                            _failures _meanq _total-repeats
+                                            &optional _ofmatrix _reps-left)
+          (org-drill-determine-next-interval :last-interval last-interval
+                                             :repeats-since-fail repetitions
+                                             :ease ease
+                                             :quality quality
+                                             :status status
+                                             :failures failures
+                                             :meanq meanq
+                                             :total-repeats total-repeats
+                                             :of-matrix org-drill-sm5-optimal-factor-matrix
+                                             :reps-left reps-left)
         (cond
-         ((not (cl-plusp next-interval))
-          0)
-         ((and (numberp weight) (cl-plusp weight))
+         ((and (cl-plusp next-interval)
+               (numberp weight)
+               (cl-plusp weight))
           (+ last-interval
              (max 1.0 (/ (- next-interval last-interval) weight))))
          (t
           next-interval))))))
 
-(defun org-drill-hypothetical-next-review-dates ()
+(cl-defgeneric org-drill-hypothetical-next-review-dates (status buttons)
   "Return hypothetical next review dates."
   (let ((intervals nil))
     (dotimes (q 6)
       (push (max (or (car intervals) 0)
-                 (org-drill-hypothetical-next-review-date q))
+                 (org-drill-hypothetical-next-review-date status q))
             intervals))
     (reverse intervals)))
 
@@ -1403,29 +1465,18 @@ of QUALITY."
           (read-key-sequence prompt))
       (set-input-method old-input-method))))
 
-(defun org-drill-reschedule (session)
-  "Returns quality rating (0-5), or nil if the user quit."
-  (let ((ch nil)
-        (input nil)
-        (next-review-dates (org-drill-hypothetical-next-review-dates))
-        (typed-answer-statement (if (oref session typed-answer)
-                                    (format "Your answer: %s\n"
-                                            (oref session typed-answer))
-                                  ""))
-        (key-prompt (format "(0-5, %c=help, %c=edit, %c=tags, %c=quit)"
+(cl-defgeneric org-drill-answer-buttons (&optional status)
+  '(?0 ?1 ?2 ?3 ?4 ?5))
+
+(cl-defgeneric org-drill-key-prompt (&key
+                                     key next-review-dates buttons status)
+  (let ((key-prompt (format "(0-5, %c=help, %c=edit, %c=tags, %c=quit)"
                             org-drill--help-key
                             org-drill--edit-key
                             org-drill--tags-key
                             org-drill--quit-key)))
-    (save-excursion
-      (while (not (memq ch (list org-drill--quit-key
-                                 org-drill--edit-key
-                                 7          ; C-g
-                                 ?0 ?1 ?2 ?3 ?4 ?5)))
-        (run-hooks 'org-drill-display-answer-hook)
-        (setq input (org-drill--read-key-sequence
-                     (if (eq ch org-drill--help-key)
-                         (format "0-2 Means you have forgotten the item.
+    (if (eq key org-drill--help-key)
+        (format "0-2 Means you have forgotten the item.
 3-5 Means you have remembered the item.
 
 0 - Completely forgot.
@@ -1435,14 +1486,38 @@ of QUALITY."
 4 - After a little bit of thought you remembered. (+%s days)
 5 - You remembered the item really easily. (+%s days)
 
-%sHow well did you do? %s"
-                                 (round (nth 3 next-review-dates))
-                                 (round (nth 4 next-review-dates))
-                                 (round (nth 5 next-review-dates))
-                                 typed-answer-statement
-                                 key-prompt)
-                       (format "%sHow well did you do? %s"
-                               typed-answer-statement key-prompt))))
+How well did you do? %s"
+                (round (nth 3 next-review-dates))
+                (round (nth 4 next-review-dates))
+                (round (nth 5 next-review-dates))
+                key-prompt)
+      (concat "How well did you do? " key-prompt))))
+
+(defun org-drill-reschedule (session)
+  "Returns quality rating, or nil if the user quit."
+  (let* ((ch nil)
+         (input nil)
+         (status (cl-first (org-drill-entry-status session)))
+         (answer-buttons (org-drill-answer-buttons status))
+         (next-review-dates (org-drill-hypothetical-next-review-dates status answer-buttons))
+         (typed-answer-statement (if (oref session typed-answer)
+                                     (format "Your answer: %s\n"
+                                             (oref session typed-answer))
+                                   "")))
+    (save-excursion
+      (while (not (memq ch (append
+                            (list org-drill--quit-key
+                                  org-drill--edit-key
+                                  ;; c-g
+                                  7)
+                            answer-buttons)))
+        (run-hooks 'org-drill-display-answer-hook)
+        (setq input (org-drill--read-key-sequence
+                     (concat typed-answer-statement
+                             (org-drill-key-prompt :key ch
+                                                   :next-review-dates next-review-dates
+                                                   :buttons answer-buttons
+                                                   :status status))))
         (cond
          ((stringp input)
           (setq ch (elt input 0)))
@@ -1467,27 +1542,37 @@ of QUALITY."
             (failures (org-drill-entry-failure-count)))
         (unless (oref session cram-mode)
           (save-excursion
-            (let ((quality (if (org-drill--entry-lapsed-p session) 2 quality)))
-              (org-drill-smart-reschedule quality
-                                          (nth quality next-review-dates))))
-          (push quality (oref session qualities))
+            (let ((quality (if (org-drill--entry-lapsed-p session) (org-drill-failure-quality) quality)))
+              (org-drill-smart-reschedule status quality
+                                          (nth (cl-position (+ ?0 quality) answer-buttons) next-review-dates))))
+          ;; only include qualities for review items
+          (unless (memq status '(:new :learning :relearning))
+            (push quality (oref session qualities)))
           (cond
-           ((<= quality org-drill-failure-quality)
+           ((and (org-drill-failure-quality-p quality)
+                 ;; negative last interval means that the entry is still in learning
+                 (cl-plusp (org-drill-entry-last-interval)))
             (when org-drill-leech-failure-threshold
-              ;;(setq failures (if failures (string-to-number failures) 0))
-              ;; (org-set-property "DRILL_FAILURE_COUNT"
-              ;;                   (format "%d" (1+ failures)))
               (if (> (1+ failures) org-drill-leech-failure-threshold)
                   (org-toggle-tag "leech" 'on))))
            (t
-            (let ((scheduled-time (org-get-scheduled-time (point))))
-              (when scheduled-time
-                (message "Next review in %d days"
-                         (- (time-to-days scheduled-time)
-                            (time-to-days (current-time))))
-                (sit-for 0.5)))
-            (when (> (oref session card-side) 0)
-              (org-set-property "DRILL_LAST_SIDE" (format "%d" (oref session card-side))))))
+            (let ((scheduled-time (org-get-scheduled-time (point)))
+                  timespan)
+              (cond
+               ((cl-plusp (org-drill-entry-last-interval))
+                (remhash (org-id-get) (oref session learning-data))
+                (unless (zerop (oref session card-side))
+                  (org-set-property "DRILL_LAST_SIDE" (format "%d" (oref session card-side))))
+                (setq timespan (format "%d days"
+                                       (- (time-to-days scheduled-time)
+                                          (time-to-days (current-time))))))
+               (t
+                (puthash (org-id-get) scheduled-time (oref session learning-data))
+                (setq timespan (thread-first (time-subtract scheduled-time (current-time))
+                                 (float-time)
+                                 (seconds-to-string)))))
+              (message "Next review in %s" timespan)
+              (sit-for 0.5))))
           (setf (oref session card-side) 0)
           (org-set-property "DRILL_LAST_QUALITY" (format "%d" quality))
           (org-set-property "DRILL_LAST_REVIEWED"
@@ -1556,7 +1641,8 @@ the current topic."
             (propertize
              (char-to-string
               (cond
-               ((eql status :failed) ?F)
+               ((eql status :learning) ?L)
+               ((eql status :relearning) ?F)
                ((oref session cram-mode) ?C)
                (t
                 (cl-case status
@@ -1566,18 +1652,17 @@ the current topic."
                      ,(cl-case status
                         (:new org-drill-new-count-color)
                         ((:young :old) org-drill-mature-count-color)
-                        ((:overdue :failed) org-drill-failed-count-color)
+                        ((:overdue :learning :relearning) org-drill-failed-count-color)
                         (t org-drill-done-count-color))))
             (propertize
              (number-to-string (length (oref session done-entries)))
              'face `(:foreground ,org-drill-done-count-color)
              'help-echo "The number of items you have reviewed this session.")
             (propertize
-             (number-to-string (+ (length (oref session again-entries))
-                                  (length (oref session failed-entries))))
+             (number-to-string (+ (length (oref session learning-entries))
+                                  (length (oref session prior-entries))))
              'face `(:foreground ,org-drill-failed-count-color)
-             'help-echo (concat "The number of items that you failed, "
-                                "and need to review again."))
+             'help-echo "The number of items in learning and re-learning.")
             (propertize
              (number-to-string mature-entry-count)
              'face `(:foreground ,org-drill-mature-count-color)
@@ -2097,10 +2182,10 @@ RESCHEDULE-FN is the function to reschedule."
        (when drill-sections
          (save-excursion
            (let ((last-side (mod (string-to-number
-                             (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
-                            (min 2 (length drill-sections)))))
-             (goto-char (nth last-side drill-sections))
+                                  (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
+                                 (min 2 (length drill-sections)))))
              (setf (oref session card-side) (1+ last-side))
+             (goto-char (nth last-side drill-sections))
              (org-show-subtree))))
        (org-drill--show-latex-fragments)
        (ignore-errors
@@ -2117,10 +2202,10 @@ RESCHEDULE-FN is the function to reschedule."
        (when drill-sections
          (save-excursion
            (let ((last-side (mod (string-to-number
-                             (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
-                            (length drill-sections))))
-             (goto-char (nth last-side drill-sections))
+                                  (or (org-entry-get (point) "DRILL_LAST_SIDE") "0"))
+                                 (length drill-sections))))
              (setf (oref session card-side) (1+ last-side))
+             (goto-char (nth last-side drill-sections))
              (org-show-subtree))))
        (org-drill--show-latex-fragments)
        (ignore-errors
@@ -2375,10 +2460,10 @@ If ANSWER is supplied, set the session slot `drill-answer' to its value."
 Review will occur regardless of whether the topic is due for review or whether
 it meets the definition of a 'review topic' used by `org-drill'.
 
-Returns a quality rating from 0 to 5, or nil if the user quit, or the symbol
-EDIT if the user chose to exit the drill and edit the current item. Choosing
-the latter option leaves the drill session suspended; it can be resumed
-later using `org-drill-resume'.
+Returns a quality rating, or nil if the user quit, or the symbol
+EDIT if the user chose to exit the drill and edit the current
+item. Choosing the latter option leaves the drill session
+suspended; it can be resumed later using `org-drill-resume'.
 
 See `org-drill' for more details."
   (org-drill-entry-f session 'org-drill-reschedule))
@@ -2446,26 +2531,29 @@ See `org-drill' for more details."
             (cl-incf org-drill-cards-in-this-emacs)
             rtn))))))
 
-(defun org-drill-entries-pending-p (session)
-  (or (oref session again-entries)
+(cl-defgeneric org-drill-pop-learning-entry (session)
+  (pop (oref session learning-entries)))
+
+(cl-defgeneric org-drill-entries-pending-p (session)
+  (or (oref session learning-entries)
       (oref session current-item)
       (and (not (org-drill-maximum-item-count-reached-p session))
            (not (org-drill-maximum-duration-reached-p session))
            (or (oref session new-entries)
-               (oref session failed-entries)
+               (oref session prior-entries)
                (oref session young-mature-entries)
                (oref session old-mature-entries)
                (oref session overdue-entries)
-               (oref session again-entries)))))
+               (oref session learning-entries)))))
 
 (defun org-drill-pending-entry-count (session)
   (+ (if (markerp (oref session current-item)) 1 0)
      (length (oref session new-entries))
-     (length (oref session failed-entries))
+     (length (oref session prior-entries))
      (length (oref session young-mature-entries))
      (length (oref session old-mature-entries))
      (length (oref session overdue-entries))
-     (length (oref session again-entries))))
+     (length (oref session learning-entries))))
 
 (defun org-drill-maximum-duration-reached-p (session)
   "Returns true if the current drill session has continued past its
@@ -2484,7 +2572,7 @@ maximum number of items."
        (not (oref session cram-mode))
        (>= (if org-drill-item-count-includes-failed-items-p
                (+ (length (oref session done-entries))
-                  (length (oref session again-entries)))
+                  (length (oref session learning-entries)))
              (length (oref session done-entries)))
           org-drill-maximum-items-per-session)))
 
@@ -2497,10 +2585,10 @@ maximum number of items."
          m
          (cond
           ;; First priority is items we failed in a prior session.
-          ((and (oref session failed-entries)
+          ((and (oref session prior-entries)
                 (not (org-drill-maximum-item-count-reached-p session))
                 (not (org-drill-maximum-duration-reached-p session)))
-           (org-drill-pop-random (oref session failed-entries)))
+           (org-drill-pop-random (oref session prior-entries)))
           ;; Next priority is overdue items.
           ((and (oref session overdue-entries)
                 (not (org-drill-maximum-item-count-reached-p session))
@@ -2529,11 +2617,15 @@ maximum number of items."
              (org-drill-pop-random (oref session old-mature-entries)))))
           ;; After all the above are done, last priority is items
           ;; that were failed earlier THIS SESSION.
-          ((oref session again-entries)
-           (pop (oref session again-entries)))
+          ((oref session learning-entries)
+           (org-drill-pop-learning-entry session))
           (t                            ; nothing left -- return nil
            (cl-return-from org-drill-pop-next-pending-entry nil)))))
       m)))
+
+(cl-defgeneric org-drill-entry-done-p (&key quality)
+  "Check if current entry is done reviewing."
+  (> quality org-drill-failure-quality))
 
 (defun org-drill-entries (session &optional resuming-p)
   "Returns nil, t, or a list of markers representing entries that were
@@ -2582,16 +2674,16 @@ RESUMING-P is true if we are resuming a suspended drill session."
                 nil)                      ; skip this item
                (t
                 (cond
-                 ((<= result org-drill-failure-quality)
-                  (if (oref session again-entries)
-                      (setf (oref session again-entries)
-                            (org-drill-shuffle (oref session again-entries))))
-                  (org-drill-push-end m (oref session again-entries)))
+                 ((not (org-drill-entry-done-p :quality result))
+                  (if (oref session learning-entries)
+                      (setf (oref session learning-entries)
+                            (org-drill-shuffle (oref session learning-entries))))
+                  (org-drill-push-end m (oref session learning-entries)))
                  (t
                   (push m (oref session done-entries))))
                 (setf (oref session current-item) nil)))))))))))
 
-(defun org-drill-final-report (session)
+(cl-defgeneric org-drill-final-report (session)
   (let* ((qualities (oref session qualities))
          (pass-percent
           (round (* 100 (cl-count-if (lambda (qual)
@@ -2635,8 +2727,8 @@ Session finished. Press a key to continue..."
               (oref session dormant-entry-count))
            (propertize
             (format "%d failed"
-                    (+ (length (oref session failed-entries))
-                       (length (oref session again-entries))))
+                    (+ (length (oref session prior-entries))
+                       (length (oref session learning-entries))))
             'face `(:foreground ,org-drill-failed-count-color))
            (propertize
             (format "%d overdue"
@@ -2689,8 +2781,8 @@ all the markers used by Org-Drill will be freed."
   (dolist (m (if (eql t markers)
                  (append  (oref session done-entries)
                           (oref session new-entries)
-                          (oref session failed-entries)
-                          (oref session again-entries)
+                          (oref session prior-entries)
+                          (oref session learning-entries)
                           (oref session overdue-entries)
                           (oref session young-mature-entries)
                           (oref session old-mature-entries))
@@ -2747,8 +2839,9 @@ STATUS is one of the following values:
 - nil, if the item is not a drill entry, or has an empty body
 - :unscheduled
 - :future
-- :new
-- :failed
+- :new -- entry you haven't seen yet, i.e. with 0 TOTAL-REPEATS
+- :learning -- entry in learning steps, i.e. with negative LAST-INTERVAL and zero FAILURE-COUNT
+- :relearning -- entry with negative LAST-INTERVAL and positive FAILURE-COUNT
 - :overdue
 - :young
 - :old
@@ -2765,7 +2858,7 @@ STATUS is one of the following values:
          nil)
         ((and (org-drill-entry-empty-p)
               (let* ((card-type (org-entry-get (point) "DRILL_CARD_TYPE" nil))
-                    (dat (cdr (assoc card-type org-drill-card-type-alist))))
+                     (dat (cdr (assoc card-type org-drill-card-type-alist))))
                 (or (null card-type)
                     (not (cl-third dat)))))
          ;; body is empty, and this is not a card type where empty bodies are
@@ -2778,12 +2871,8 @@ STATUS is one of the following values:
         ((cl-minusp due)                   ; scheduled in the future
          :future)
         ;; The rest of the stati all denote 'due' items ==========================
-        ((<= (org-drill-entry-last-quality 9999)
-             org-drill-failure-quality)
-         ;; Mature entries that were failed last time are
-         ;; FAILED, regardless of how young, old or overdue
-         ;; they are.
-         :failed)
+        ((cl-minusp (org-drill-entry-last-interval))
+         (if (zerop (org-drill-entry-failure-count)) :learning :relearning))
         ((org-drill-entry-new-p)
          :new)
         ((org-drill-entry-overdue-p session due last-int)
@@ -2816,7 +2905,7 @@ STATUS is one of the following values:
       (length (oref session overdue-entries))
       (length (oref session young-mature-entries))
       (length (oref session old-mature-entries))
-      (length (oref session failed-entries)))
+      (length (oref session prior-entries)))
    (cl-incf (oref session cnt)))
   (when (org-drill-entry-p)
     (org-drill-id-get-create-with-warning session)
@@ -2829,13 +2918,19 @@ STATUS is one of the following values:
         ;;  (cl-incf *org-drill-dormant-entry-count*)
         ;;  (cl-incf *org-drill-due-tomorrow-count*))
         (:future
-         (cl-incf (oref session dormant-entry-count))
-         (if (eq -1 due)
-             (cl-incf (oref session due-tomorrow-count))))
+         (cl-etypecase due
+           (integer
+            (oref session dormant-entry-count)
+            (if (eq -1 due)
+                (cl-incf (oref session due-tomorrow-count))))
+           ;; (re)learning entry due today but at a later time
+           (float
+            (push (point-marker) (oref session learning-entries))
+            (puthash (org-id-get) (org-get-scheduled-time (point)) (oref session learning-data)))))
         (:new
          (push (point-marker) (oref session new-entries)))
-        (:failed
-         (push (point-marker) (oref session failed-entries)))
+        ((:learning :relearning)
+         (push (point-marker) (oref session prior-entries)))
         (:young
          (push (point-marker) (oref session young-mature-entries)))
         (:overdue
@@ -2917,8 +3012,8 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
               (oref session overdue-entries) nil
               (oref session young-mature-entries) nil
               (oref session old-mature-entries) nil
-              (oref session failed-entries) nil
-              (oref session again-entries) nil
+              (oref session prior-entries) nil
+              (oref session learning-entries) nil
               (oref session start-time) (float-time (current-time))))
       (unwind-protect
           (save-excursion
@@ -2935,7 +3030,7 @@ work correctly with older versions of org mode. Your org mode version (%s) appea
             (cond
              ((and (null (oref session current-item))
                    (null (oref session new-entries))
-                   (null (oref session failed-entries))
+                   (null (oref session prior-entries))
                    (null (oref session overdue-entries))
                    (null (oref session young-mature-entries))
                    (null (oref session old-mature-entries)))
@@ -3045,7 +3140,7 @@ need reviewing.  Start a new drill session? "
 Makes the item behave as if it has been failed, without actually recording a
 failure. This command can be used to 'reset' repetitions for an item."
   (interactive)
-  (org-drill-smart-reschedule 4 0))
+  (org-drill-smart-reschedule :young 4 0))
 
 
 (defun org-drill-strip-entry-data ()
@@ -3203,7 +3298,7 @@ copy them across."
              ;; and write the data.
              (let ((marker (gethash id org-drill-dest-id-table)))
                (cl-destructuring-bind (last-interval repetitions failures
-                                                  total-repeats meanq ease)
+                                                     total-repeats meanq ease reps-left)
                    (org-drill-get-item-data)
                  (setq last-reviewed (org-entry-get (point) "DRILL_LAST_REVIEWED")
                        last-quality (org-entry-get (point) "DRILL_LAST_QUALITY")

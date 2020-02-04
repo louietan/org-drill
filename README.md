@@ -1,5 +1,25 @@
 # Introduction
 
+## Changes in this fork
+
+1. Implemented Anki's variation of the SM2 algorithm.
+2. Review card sides in turn instead of randomly.
+3. Fixed some issues with displaying cloze deletions.
+
+## Usage
+
+If you have _el-get_ installed, just add the following to your `.emacs`
+
+    (el-get-bundle louietan/org-drill
+       (with-eval-after-load 'org-drill (require 'org-drill-anki)))
+
+Otherwise clone this repo and add it to `load-path` and
+`(with-eval-after-load 'org-drill (require 'org-drill-anki))` to you `.emacs`.
+
+Customize `org-drill-spaced-repetition-algorithm` to `sm2-anki`.
+
+---
+
 Please see [the history](#history) of this repository.
 
 Org-Drill is an extension for [Org
