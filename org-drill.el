@@ -2391,7 +2391,6 @@ See `org-drill' for more details."
        'ignore)))
 
 (defun org-drill-entry-f (session complete-func)
-  (interactive)
   (org-drill-goto-drill-entry-heading)
   ;;(unless (org-drill-part-of-drill-entry-p)
   ;;  (error "Point is not inside a drill entry"))
