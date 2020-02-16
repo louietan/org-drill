@@ -2172,7 +2172,8 @@ RESCHEDULE-FN is the function to reschedule."
 (defun org-drill--show-latex-fragments ()
   "Show latex fragment."
   (org-remove-latex-fragment-image-overlays)
-  (org-toggle-latex-fragment '(16)))
+  (let ((inhibit-message t))
+    (org-toggle-latex-fragment '(16))))
 
 (defun org-drill-present-two-sided-card (session)
   (org-drill-with-hidden-comments
@@ -2647,7 +2648,6 @@ RESUMING-P is true if we are resuming a suspended drill session."
           (error "Unexpectedly ran out of pending drill items"))
         (save-excursion
           (org-drill-goto-entry m)
-          (message "[debug] org-drill: at marker position %s" (marker-position m))
           (cond
            ((not (org-at-heading-p))
             (error "Not at heading for entry %s" m))
