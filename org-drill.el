@@ -59,6 +59,7 @@
 (require 'org-id)
 (require 'persist)
 (require 'seq)
+(require 'subr-x)
 
 (defgroup org-drill nil
   "Options concerning interactive drill sessions in Org mode (org-drill)."

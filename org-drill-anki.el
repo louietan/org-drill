@@ -25,6 +25,7 @@
 
 (require 'cl-lib)
 (require 'org-drill)
+(require 'subr-x)
 
 (defgroup org-drill-anki nil
   "Customization options for anki's SM2 algorithm."
